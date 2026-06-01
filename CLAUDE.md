@@ -64,7 +64,7 @@
 - knowledge/001-意识本质到认知重构.md
 - knowledge/002-AI时代个人生存与变现核心战略.md
 - knowledge/003-关系复盘结案报告.md
-- knowledge/004-猫狗老虎自我剖析.md
+- knowledge/004-三层意识的自我剖析.md
 - knowledge/005-情绪驱动型表达者沟通技巧.md
 - knowledge/006-自我暴露与真实关系构建.md
 - knowledge/007-真实暴露与分级筛选.md
