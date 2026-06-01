@@ -16,17 +16,17 @@ for line in f: #(逐行读出数据)
     all_entries.append(line) #(每行数据按顺序追加到列表中)
 f.close() #(关闭文件)
 print(all_entries) #(输出列表中所有数据)
-all_body=0
+all_body=0 #(累加所有分数，初始为0)
 all_mood=0
 all_energy=0
 days=0
-for line in all_entries:
-    data=ast.literal_eval(line.strip())
-    all_body=all_body+int(data[0])
+for line in all_entries: #(逐行读出数据)
+    data=ast.literal_eval(line.strip()) #(将数据转换为列表并去掉换行)
+    all_body=all_body+int(data[0]) #(初始数据基础上累加对应数据并转换为数字)
     all_mood=all_mood+int(data[1])
     all_energy=all_energy+int(data[2])
     days=days+1 
-print("身体平均值:"+str(all_body/days))
-print("情绪平均值:"+str(all_mood/days))
-print("精力平均值:"+str(all_energy/days))
+print("身体平均值:"+str(round(all_body/days,2))) #(输出对应平均值并取两位小数)
+print("情绪平均值:"+str(round(all_mood/days,2)))
+print("精力平均值:"+str(round(all_energy/days,2)))
 print("总天数:"+str(days))
