@@ -71,7 +71,7 @@
 - knowledge/008-爱情定义的思考过程.md
 - knowledge/009-镜子的诞生与系统验证.md
 - knowledge/010-关系建设期方法论.md（待写入）
-- knowledge/016-小美-源头事件.md
+- knowledge/016-完美防御的诞生.md
 - knowledge/017-命理学与体验验证.md
 - knowledge/018-专属智能体定制.md
 - knowledge/011-能量审计工具.md（待写入）
