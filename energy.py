@@ -1,17 +1,32 @@
-scores=[]
-body=input("身体状态(1-10):")
+import ast
+scores=[] #(创建一个空列表)
+body=input("身体状态(1-10):") #(给三个维度赋值)
 mood=input("情绪状态(1-10):")
 energy=input("精力状态(1-10):")
-scores.append(body)
+scores.append(body) #(把赋值分数依次放入列表末尾)
 scores.append(mood)
 scores.append(energy)
-print("今日记录:"+str(scores))
-f=open("/Users/jingzhe/奇点/energy_log.txt","a")
-f.write(str(scores)+"\n")
-f.close()
-all_entries=[]
-f=open("/Users/jingzhe/奇点/energy_log.txt","r")
-for line in f:
-    all_entries.append(line)
-f.close()
-print(all_entries)
+print("今日记录:"+str(scores)) #(输出今日记录的分数)
+f=open("/Users/jingzhe/奇点/energy_log.txt","a") #(打开文件，a=append=追加模式，追加到末尾不覆盖)
+f.write(str(scores)+"\n") #(写入赋值分数转换为文本写入文件并换行)
+f.close() #(关闭文件)
+all_entries=[] #(创建一个空列表)
+f=open("/Users/jingzhe/奇点/energy_log.txt","r") #(打开目标文件并只读)
+for line in f: #(逐行读出数据)
+    all_entries.append(line) #(每行数据按顺序追加到列表中)
+f.close() #(关闭文件)
+print(all_entries) #(输出列表中所有数据)
+all_body=0
+all_mood=0
+all_energy=0
+days=0
+for line in all_entries:
+    data=ast.literal_eval(line.strip())
+    all_body=all_body+int(data[0])
+    all_mood=all_mood+int(data[1])
+    all_energy=all_energy+int(data[2])
+    days=days+1 
+print("身体平均值:"+str(all_body/days))
+print("情绪平均值:"+str(all_mood/days))
+print("精力平均值:"+str(all_energy/days))
+print("总天数:"+str(days))
