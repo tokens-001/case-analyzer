@@ -6,17 +6,24 @@ import os  # 读系统环境变量的库
 def 字数(判例):
     return len(判例)  # 返回判例文字的字数
 
+def 问AI(问题,判例): 
+    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    response = requests.post(
+        url="https://api.deepseek.com/v1/chat/completions", 
+        headers={"Authorization": f"Bearer {api_key}"}, 
+        json={"model": "deepseek-chat",  "messages": [{  "role": "user", "content": f"{问题}\n判例文字:{判例}" }]}
+                            )
+    data = response.json()  
+    return data["choices"][0]["message"]["content"] 
+                     
 def 核心争议(判例):
-    return "核心争议：占位"  # 待升级：独立调用API
-
+    return 问AI("请分析以下判例的核心争议是什么？", 判例)
 def 推理链路(判例):
-    return "推理链路：占位"  # 待升级：独立调用API
-
+    return 问AI("根据上述判例，法院的推理链路是什么？",判例)                  
 def 未回答问题(判例):
-    return "未回答：占位"  # 待升级：独立调用API
-
+    return 问AI("这份判例的法院判决中，还有哪些法律问题未被回答？",判例) 
 def 可平移性(判例):
-    return "可平移性：占位"  # 待升级：独立调用API
+    return 问AI("这份判例的分析框架可以平移到哪些法律领域？",判例) 
 
 # ---- 主程序：外层循环，可多次分析 ----
 while True:
@@ -30,25 +37,30 @@ while True:
         lines.append(line)  # 把这行加进列表
     判例 = "\n".join(lines)  # 把列表所有行拼成一段完整文字
 
-    # 第二步：从环境变量取出API密钥
-    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    分析1 = 核心争议(判例)
+    分析2 = 推理链路(判例)
+    分析3 = 未回答问题(判例)
+    分析4 = 可平移性(判例)
+    
+    print("\n" + "="*50)
+    print(字数(判例))
+    print("\n" + "="*50)
+    print("【核心争议】")
+    print(分析1)
+    print("\n" + "="*50)
+    print("【推理链路】")
+    print(分析2)
+    print("\n" + "="*50)
+    print("【未回答问题】")
+    print(分析3)
+    print("\n" + "="*50)
+    print("【可平移性】")
+    print(分析4)
+    print("="*50)
 
-    # 第三步：发API请求
-    response = requests.post(
-        url="https://api.deepseek.com/v1/chat/completions",  # DeepSeek地址
-        headers={"Authorization": f"Bearer {api_key}"},  # 身份认证
-        json={  # 包裹内容
-            "model": "deepseek-chat",  # 使用的模型
-            "messages": [{  # 发给AI的消息列表
-                "role": "user",  # 谁在说话：user=你
-                "content": f"请用以下四问分析这段判例:核心争议是什么？ 推理链路是什么？还有那些未回答的问题？这个框架可以平移到哪些领域？判例文字：{判例}"  # 四问指令+判例
-            }]
-        })
-
-    # 第四步：拆解API返回的结果
-    data = response.json()  # 把返回内容转成Python字典
-    ai_reply = data["choices"][0]["message"]["content"]  # 从字典里扒出AI的回复
-    print("AI回复:", ai_reply)  # 打印结果
+    f=open("/Users/jingzhe/奇点/case_log.txt","a")
+    f.write("判例\n"+"="*50+分析1+"\n"+"="*50+分析2+"\n"+"="*50+分析3+"\n"+分析4)
+    f.close() 
 
     # 第五步：问用户要继续还是退出
     reply = input("继续或者退出：")
