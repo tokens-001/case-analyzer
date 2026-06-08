@@ -29,7 +29,7 @@ def 晚间评估():
     q4 = input("4. 今天有啥想说的？ ")
 
     今天 = str(date.today())
-    记录 = "[" + q1 + ", " + repr(q2) + ", " + repr(q3) + ", " + repr(q4) + ", " + 今天 + "]"
+    记录 = "[" + q1 + ", " + repr(q2) + ", " + repr(q3) + ", " + repr(q4) + ",\"" + 今天 + "\"]"
 
     f = open("/Users/jingzhe/奇点/data/evening_log.txt", "a")
     f.write(记录 + "\n")
@@ -145,7 +145,7 @@ def 统计():
     月份数据 = {}
     for line in all_entries:
         data = ast.literal_eval(line)
-        日期 = data[4]
+        日期 = str(data[4]).strip('"')
         月份 = 日期[:7]
         if 月份 not in 月份数据:
             月份数据[月份] = []
@@ -203,7 +203,7 @@ def 统计():
         f = open("/Users/jingzhe/奇点/data/evening_log.txt", "r")
         for line in f:
             data = ast.literal_eval(line.strip())
-            日期 = data[4]
+            日期 = str(data[4]).strip('"')
             月份 = 日期[:7]
             if 月份 not in 晚间数据:
                 晚间数据[月份] = []
