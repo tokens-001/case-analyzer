@@ -145,11 +145,8 @@
 - 其余教学规则见 teach-me 技能文件。
 
 ### SD 卡备份规则
-- SD 卡挂载在 /Volumes/奇点备份/，文件系统 exFAT
-- `奇点-current/` — 最新版本，每次重大更新后 rsync 同步
-- `奇点-YYYY-MM-DD/` — 更新前的快照，重大更新前先把奇点-current 复制为日期快照，再同步新版本
-- 同步命令：`rsync -av --delete ~/奇点/ /Volumes/奇点备份/奇点-current/`
-- 注意：Claude Code 沙箱可能无法直接读写 SD 卡，需用户在终端手动执行
+- 每周日执行。先把奇点-current 复制为奇点-YYYY-MM-DD 快照，再 rsync 最新版本到奇点-current。命令：`rsync -av --delete ~/奇点/ /Volumes/奇点备份/奇点-current/`
+- 沙箱无法读写 SD 卡时提醒用户手动执行
 
 ### 日常执行
 详见 `~/奇点/日常执行.md`。会话开始时读取最新状态，逐项问完成情况。不凭记忆不预判。
