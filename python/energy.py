@@ -110,10 +110,17 @@ def 状态评估():
     # 提取分数行存energy_log.txt
     for line in 结果.split("\n"):
         if line.startswith("分数:["):
-            分数行 = line.replace("分数:", "")
-            分数文件 = open("/Users/jingzhe/奇点/data/energy_log.txt", "a")
-            分数文件.write("[" + 分数行.strip().strip("[]") + "," + 今天 + "]\n")
-            分数文件.close()
+            分数行 = line.replace("分数:", "").strip()
+            # AI返回的是[7,5,8,重]，重/轻需要加引号
+            分数行 = 分数行.strip("[]")
+            各部分 = 分数行.split(",")
+            if len(各部分) == 4:
+                格式化 = "[" + 各部分[0] + "," + 各部分[1] + "," + 各部分[2] + ",\"" + 各部分[3].strip() + "\",\"" + 今天 + "\"]"
+            else:
+                格式化 = "[" + 分数行 + ",\"" + 今天 + "\"]"
+            f = open("/Users/jingzhe/奇点/data/energy_log.txt", "a")
+            f.write(格式化 + "\n")
+            f.close()
             print("分数已自动记录: " + 分数行)
             break
 
