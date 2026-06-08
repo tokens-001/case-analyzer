@@ -162,6 +162,69 @@ def 统计():
                 light = light + 1
         print(月份 + " | 平均: 身体" + str(round(body_sum/total, 1)) + " 情绪" + str(round(mood_sum/total, 1)) + " 精力" + str(round(energy_sum/total, 1)) + " | 重度" + str(heavy) + "天 轻度" + str(light) + "天")
 
+    # 晚间统计
+    晚间数据 = {}
+    try:
+        f = open("/Users/jingzhe/奇点/evening_log.txt", "r")
+        for line in f:
+            data = ast.literal_eval(line.strip())
+            日期 = data[4]
+            月份 = 日期[:7]
+            if 月份 not in 晚间数据:
+                晚间数据[月份] = []
+            晚间数据[月份].append(data)
+        f.close()
+    except:
+        pass
+
+    if len(晚间数据) > 0:
+        print("\n--- 晚间数据（按月） ---")
+        for 月份 in sorted(晚间数据.keys()):
+            records = 晚间数据[月份]
+            total = len(records)
+            清晰度总和 = 0
+            启动情况 = {"顺利": 0, "一般": 0, "卡住了": 0}
+            社交情况 = {"没有社交": 0, "有但不累": 0, "有而且很累": 0}
+            for r in records:
+                清晰度总和 = 清晰度总和 + int(r[0])
+                启动 = r[2].strip("'")
+                社交 = r[1].strip("'")
+                if 启动 in 启动情况:
+                    启动情况[启动] = 启动情况[启动] + 1
+                if 社交 in 社交情况:
+                    社交情况[社交] = 社交情况[社交] + 1
+            print(月份 + " | 清晰度均值: " + str(round(清晰度总和/total, 1)))
+            print("  启动: 顺利" + str(启动情况["顺利"]) + "天 一般" + str(启动情况["一般"]) + "天 卡住" + str(启动情况["卡住了"]) + "天")
+            print("  社交: 无社交" + str(社交情况["没有社交"]) + "天 有但不累" + str(社交情况["有但不累"]) + "天 很累" + str(社交情况["有而且很累"]) + "天")
+
+        # 按年统计
+        print("\n--- 晚间数据（按年） ---")
+        年数据 = {}
+        for records in 晚间数据.values():
+            for r in records:
+                日期 = r[4]
+                年份 = 日期[:4]
+                if 年份 not in 年数据:
+                    年数据[年份] = []
+                年数据[年份].append(r)
+        for 年份 in sorted(年数据.keys()):
+            records = 年数据[年份]
+            total = len(records)
+            清晰度总和 = 0
+            启动情况 = {"顺利": 0, "一般": 0, "卡住了": 0}
+            社交情况 = {"没有社交": 0, "有但不累": 0, "有而且很累": 0}
+            for r in records:
+                清晰度总和 = 清晰度总和 + int(r[0])
+                启动 = r[2].strip("'")
+                社交 = r[1].strip("'")
+                if 启动 in 启动情况:
+                    启动情况[启动] = 启动情况[启动] + 1
+                if 社交 in 社交情况:
+                    社交情况[社交] = 社交情况[社交] + 1
+            print(年份 + " | 清晰度均值: " + str(round(清晰度总和/total, 1)))
+            print("  启动: 顺利" + str(启动情况["顺利"]) + "天 一般" + str(启动情况["一般"]) + "天 卡住" + str(启动情况["卡住了"]) + "天")
+            print("  社交: 无社交" + str(社交情况["没有社交"]) + "天 有但不累" + str(社交情况["有但不累"]) + "天 很累" + str(社交情况["有而且很累"]) + "天")
+
 # ---- 菜单 ----
 def 启动():
     while True:
