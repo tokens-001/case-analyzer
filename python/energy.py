@@ -31,7 +31,7 @@ def 晚间评估():
     今天 = str(date.today())
     记录 = "[" + q1 + ", " + repr(q2) + ", " + repr(q3) + ", " + repr(q4) + ", " + 今天 + "]"
 
-    f = open("/Users/jingzhe/奇点/evening_log.txt", "a")
+    f = open("/Users/jingzhe/奇点/data/evening_log.txt", "a")
     f.write(记录 + "\n")
     f.close()
 
@@ -44,7 +44,7 @@ def 状态评估():
     # 读取最近一条晚间记录作为参考
     晚间参考 = ""
     try:
-        f_evening = open("/Users/jingzhe/奇点/evening_log.txt", "r")
+        f_evening = open("/Users/jingzhe/奇点/data/evening_log.txt", "r")
         lines = f_evening.readlines()
         f_evening.close()
         if len(lines) > 0:
@@ -103,7 +103,7 @@ def 状态评估():
 
     # 存储详细记录
     今天 = str(date.today())
-    f1 = open("/Users/jingzhe/奇点/energy_detail.txt", "a")
+    f1 = open("/Users/jingzhe/奇点/data/energy_detail.txt", "a")
     f1.write("=== " + 今天 + " ===\n" + 结果 + "\n\n")
     f1.close()
 
@@ -111,7 +111,7 @@ def 状态评估():
     for line in 结果.split("\n"):
         if line.startswith("分数:["):
             分数行 = line.replace("分数:", "")
-            f2 = open("/Users/jingzhe/奇点/energy_log.txt", "a")
+            f2 = open("/Users/jingzhe/奇点/data/energy_log.txt", "a")
             f2.write("[" + 分数行.strip().strip("[]") + "," + 今天 + "]\n")
             f2.close()
             print("分数已自动记录: " + 分数行)
@@ -121,7 +121,7 @@ def 状态评估():
 def 统计():
     all_entries = []
     try:
-        f = open("/Users/jingzhe/奇点/energy_log.txt", "r")
+        f = open("/Users/jingzhe/奇点/data/energy_log.txt", "r")
         for line in f:
             all_entries.append(line.strip())
         f.close()
@@ -165,7 +165,7 @@ def 统计():
     # 晚间统计
     晚间数据 = {}
     try:
-        f = open("/Users/jingzhe/奇点/evening_log.txt", "r")
+        f = open("/Users/jingzhe/奇点/data/evening_log.txt", "r")
         for line in f:
             data = ast.literal_eval(line.strip())
             日期 = data[4]

@@ -62,7 +62,7 @@ def 启动():
         print(分析4)
         print("="*50)
 
-        f=open("/Users/jingzhe/奇点/case_log.txt","a")
+        f=open("/Users/jingzhe/奇点/data/case_log.txt","a")
         f.write("判例\n"+"="*50+分析1+"\n"+"="*50+分析2+"\n"+"="*50+分析3+"\n"+分析4)
         f.close() 
 
