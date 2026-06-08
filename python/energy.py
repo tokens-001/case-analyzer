@@ -152,11 +152,11 @@ def 统计():
         energy_sum = 0
         heavy = 0
         light = 0
-        for r in records:
-            body_sum = body_sum + r[0]
-            mood_sum = mood_sum + r[1]
-            energy_sum = energy_sum + r[2]
-            if r[3] == "重":
+        for 每条记录 in records:
+            body_sum = body_sum + 每条记录[0]
+            mood_sum = mood_sum + 每条记录[1]
+            energy_sum = energy_sum + 每条记录[2]
+            if 每条记录[3] == "重":
                 heavy = heavy + 1
             else:
                 light = light + 1
@@ -185,10 +185,10 @@ def 统计():
             清晰度总和 = 0
             启动情况 = {"顺利": 0, "一般": 0, "卡住了": 0}
             社交情况 = {"没有社交": 0, "有但不累": 0, "有而且很累": 0}
-            for r in records:
-                清晰度总和 = 清晰度总和 + int(r[0])
-                启动 = r[2].strip("'")
-                社交 = r[1].strip("'")
+            for 每条记录 in records:
+                清晰度总和 = 清晰度总和 + int(每条记录[0])
+                启动 = 每条记录[2].strip("'")
+                社交 = 每条记录[1].strip("'")
                 if 启动 in 启动情况:
                     启动情况[启动] = 启动情况[启动] + 1
                 if 社交 in 社交情况:
@@ -201,7 +201,7 @@ def 统计():
         print("\n--- 晚间数据（按年） ---")
         年数据 = {}
         for records in 晚间数据.values():
-            for r in records:
+            for 每条记录 in records:
                 日期 = r[4]
                 年份 = 日期[:4]
                 if 年份 not in 年数据:
@@ -213,10 +213,10 @@ def 统计():
             清晰度总和 = 0
             启动情况 = {"顺利": 0, "一般": 0, "卡住了": 0}
             社交情况 = {"没有社交": 0, "有但不累": 0, "有而且很累": 0}
-            for r in records:
-                清晰度总和 = 清晰度总和 + int(r[0])
-                启动 = r[2].strip("'")
-                社交 = r[1].strip("'")
+            for 每条记录 in records:
+                清晰度总和 = 清晰度总和 + int(每条记录[0])
+                启动 = 每条记录[2].strip("'")
+                社交 = 每条记录[1].strip("'")
                 if 启动 in 启动情况:
                     启动情况[启动] = 启动情况[启动] + 1
                 if 社交 in 社交情况:
