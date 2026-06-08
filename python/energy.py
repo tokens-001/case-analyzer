@@ -140,7 +140,7 @@ def 统计():
         print("暂无记录数据")
         return
 
-    print("\n=== 统计报告 ===")
+    print("\n===== 早间统计 =====")
 
     月份数据 = {}
     for line in all_entries:
@@ -167,7 +167,35 @@ def 统计():
                 heavy = heavy + 1
             else:
                 light = light + 1
-        print(月份 + " | 平均: 身体" + str(round(body_sum/total, 1)) + " 情绪" + str(round(mood_sum/total, 1)) + " 精力" + str(round(energy_sum/total, 1)) + " | 重度" + str(heavy) + "天 轻度" + str(light) + "天")
+        print(月份 + " | 平均 身体" + str(round(body_sum/total, 1)) + " 情绪" + str(round(mood_sum/total, 1)) + " 精力" + str(round(energy_sum/total, 1)) + " | 重度" + str(heavy) + "天 轻度" + str(light) + "天")
+
+    # 早间按年统计
+    年数据 = {}
+    for records in 月份数据.values():
+        for 每条记录 in records:
+            日期 = str(每条记录[4]).strip('"')
+            年份 = 日期[:4]
+            if 年份 not in 年数据:
+                年数据[年份] = []
+            年数据[年份].append(每条记录)
+    print("\n--- 早间（按年） ---")
+    for 年份 in sorted(年数据.keys()):
+        records = 年数据[年份]
+        total = len(records)
+        body_sum = 0
+        mood_sum = 0
+        energy_sum = 0
+        heavy = 0
+        light = 0
+        for 每条记录 in records:
+            body_sum = body_sum + 每条记录[0]
+            mood_sum = mood_sum + 每条记录[1]
+            energy_sum = energy_sum + 每条记录[2]
+            if str(每条记录[3]).strip('"') == "重":
+                heavy = heavy + 1
+            else:
+                light = light + 1
+        print(年份 + " | 平均 身体" + str(round(body_sum/total, 1)) + " 情绪" + str(round(mood_sum/total, 1)) + " 精力" + str(round(energy_sum/total, 1)) + " | 重度" + str(heavy) + "天 轻度" + str(light) + "天")
 
     # 晚间统计
     晚间数据 = {}
@@ -185,7 +213,7 @@ def 统计():
         pass
 
     if len(晚间数据) > 0:
-        print("\n--- 晚间数据（按月） ---")
+        print("\n===== 晚间统计 =====\n\n--- 按月 ---")
         for 月份 in sorted(晚间数据.keys()):
             records = 晚间数据[月份]
             total = len(records)
@@ -205,15 +233,15 @@ def 统计():
             print("  社交: 无社交" + str(社交情况["没有社交"]) + "天 有但不累" + str(社交情况["有但不累"]) + "天 很累" + str(社交情况["有而且很累"]) + "天")
 
         # 按年统计
-        print("\n--- 晚间数据（按年） ---")
+        print("\n--- 按年 ---")
         年数据 = {}
         for records in 晚间数据.values():
             for 每条记录 in records:
-                日期 = r[4]
+                日期 = 每条记录[4]
                 年份 = 日期[:4]
                 if 年份 not in 年数据:
                     年数据[年份] = []
-                年数据[年份].append(r)
+                年数据[年份].append(每条记录)
         for 年份 in sorted(年数据.keys()):
             records = 年数据[年份]
             total = len(records)
