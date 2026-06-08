@@ -103,17 +103,17 @@ def 状态评估():
 
     # 存储详细记录
     今天 = str(date.today())
-    f1 = open("/Users/jingzhe/奇点/data/energy_detail.txt", "a")
-    f1.write("=== " + 今天 + " ===\n" + 结果 + "\n\n")
-    f1.close()
+    详细文件 = open("/Users/jingzhe/奇点/data/energy_detail.txt", "a")
+    详细文件.write("=== " + 今天 + " ===\n" + 结果 + "\n\n")
+    详细文件.close()
 
     # 提取分数行存energy_log.txt
     for line in 结果.split("\n"):
         if line.startswith("分数:["):
             分数行 = line.replace("分数:", "")
-            f2 = open("/Users/jingzhe/奇点/data/energy_log.txt", "a")
-            f2.write("[" + 分数行.strip().strip("[]") + "," + 今天 + "]\n")
-            f2.close()
+            分数文件 = open("/Users/jingzhe/奇点/data/energy_log.txt", "a")
+            分数文件.write("[" + 分数行.strip().strip("[]") + "," + 今天 + "]\n")
+            分数文件.close()
             print("分数已自动记录: " + 分数行)
             break
 
