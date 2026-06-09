@@ -29,7 +29,13 @@ def 晚间评估():
     q4 = input("4. 今天有啥想说的？ ")
 
     今天 = str(date.today())
-    记录 = "[" + q1 + ", " + repr(q2) + ", " + repr(q3) + ", " + repr(q4) + ",\"" + 今天 + "\"]"
+    记录列表 = []
+    记录列表.append(q1)
+    记录列表.append(repr(q2))
+    记录列表.append(repr(q3))
+    记录列表.append(repr(q4))
+    记录列表.append("\"" + 今天 + "\"")
+    记录 = "[" + ", ".join(记录列表) + "]"
 
     f = open("/Users/jingzhe/奇点/data/evening_log.txt", "a")
     f.write(记录 + "\n")
