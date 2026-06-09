@@ -57,10 +57,11 @@
 **新语法**：函数(def/参数/return) → HTTP请求 → JSON处理 → 字典
 **产出**：`case_analyzer.py`，第一次和真实 API 对话。
 
-## 第五节：转义符
+## 第五节：转义符与repr
 - `\"` — 在字符串里放双引号。告诉 Python "这个引号是内容不是边界"
 - `\n` — 换行符。在字符串里换一行
-- ✅ 已实践：energy.py 存日期格式 + test_escape.py 验证
+- `repr()` — 给数据加 Python 能辨认的外壳。`repr("没有社交")` → `'没有社交'`（加单引号），存文件后 `ast.literal_eval` 才能正确读回
+- ✅ 已实践：energy.py 存日期格式 + energy.py 晚间记录
 
 ### 项目4：奇点命令行（持续）
 **做什么**：合并前三项，终端输入 `python qidian.py` 打开菜单，选功能。
