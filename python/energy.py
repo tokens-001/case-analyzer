@@ -50,11 +50,16 @@ def 状态评估():
     # 读取最近一条晚间记录作为参考
     晚间参考 = ""
     try:
-        f_evening = open("/Users/jingzhe/奇点/data/evening_log.txt", "r")
-        lines = f_evening.readlines()
+        f_evening = open("/Users/jingzhe/奇点/data/energy_detail.txt", "r")
+        detail = f_evening.read()
         f_evening.close()
-        if len(lines) > 0:
-            晚间参考 = "【用户昨晚的状态】" + lines[-1].strip() + "\n\n"
+        if len(detail) > 0:
+            区块 = detail.split("===")
+            if len(区块) >= 2:
+                # 取最后一条记录
+                最后一条 = 区块[-1].strip()
+                if len(最后一条) > 0:
+                    晚间参考 = "【用户昨晚的评估】\n" + 最后一条 + "\n\n"
     except:
         pass
 
