@@ -220,6 +220,16 @@
   .validation .warn-item { margin-top: 4px; }
   .validation .warn-item::before { content: "⚠️ "; }
 
+  /* ---- 风险提示（最优先） ---- */
+  .risk-section { margin-bottom: 16px; }
+  .risk-item {
+    padding: 12px 16px; border-radius: 8px; margin-bottom: 6px;
+    font-size: 14px;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .risk-item.warning { background: #2e2a1a; border: 1px solid #5a4a3a; color: #facc15; }
+  .risk-item.danger { background: #3b1c1c; border: 1px solid #7f2a2a; color: #fca5a5; }
+
   /* ---- 关联判例 ---- */
   .related-section {
     background: #21252b;
@@ -296,6 +306,8 @@
     <div class="input-row">
       <label>判例名称</label>
       <input type="text" id="caseName" placeholder="例：张某诉李某合同纠纷案">
+      <label style="min-width:60px;">案发日期</label>
+      <input type="date" id="caseDate" style="flex:0 0 160px;" title="用于校验AI引用的法条版本是否正确">
     </div>
 
     <textarea id="caseText" placeholder="在此粘贴判例全文……"></textarea>
@@ -314,7 +326,7 @@
   <!-- 加载中 -->
   <div class="loading" id="loading">
     <div class="spinner"></div>
-    AI正在分析判例……四个维度并行处理中，约需20-40秒
+    AI正在分析判例……六维并行处理中，约需30-50秒
   </div>
 
   <!-- 错误 -->
@@ -323,7 +335,18 @@
   <!-- 结果区 -->
   <div class="results" id="results">
 
-    <!-- 四维分析卡片 -->
+    <!-- ⚠️ 风险提示（最优先展示） -->
+    <div class="risk-section" id="risk-section" style="display:none;">
+      <div id="risk-items"></div>
+    </div>
+
+    <!-- 结构化摘要：事实→争议→理由→结果 -->
+    <div class="card-summary" id="struct-summary-section" style="display:none;">
+      <h3>判决结构化</h3>
+      <div class="content" id="r-struct-summary" style="white-space:pre-wrap;"></div>
+    </div>
+
+    <!-- 六维分析卡片 2×3 -->
     <div class="card-grid">
       <div class="card">
         <h3>一、核心争议</h3>
@@ -341,12 +364,14 @@
         <h3>四、可平移性</h3>
         <div class="content" id="r-transfer">-</div>
       </div>
-    </div>
-
-    <!-- 总结 -->
-    <div class="card-summary">
-      <h3>综合总结</h3>
-      <div class="content" id="r-summary"></div>
+      <div class="card">
+        <h3>五、总结</h3>
+        <div class="content" id="r-summary"></div>
+      </div>
+      <div class="card" style="border-color:#5a3a3a;">
+        <h3 style="color:#f87171;">六、反例检索 ⚡</h3>
+        <div class="content" id="r-counter" style="font-size:13px;">-</div>
+      </div>
     </div>
 
     <!-- 法条统计 -->
@@ -443,6 +468,7 @@ function 清空() {
 async function 开始分析() {
   const name = document.getElementById("caseName").value.trim();
   const text = document.getElementById("caseText").value.trim();
+  const caseDate = document.getElementById("caseDate").value.trim();
 
   if (!text) {
     显示错误("请先输入或上传判例文字");
@@ -453,12 +479,13 @@ async function 开始分析() {
   document.getElementById("loading").classList.add("active");
   document.getElementById("results").classList.remove("active");
   document.getElementById("error").classList.remove("active");
+  document.querySelector(".loading").innerHTML = '<div class="spinner"></div>AI正在六维分析判例……含反例检索与结构化摘要，约需30-50秒';
 
   try {
     const response = await fetch("/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name, text: text })
+      body: JSON.stringify({ name: name, text: text, case_date: caseDate })
     });
 
     const data = await response.json();
@@ -497,11 +524,36 @@ function 渲染结果(data) {
   }
 
   const a = data.分析;
-  document.getElementById("r-core").textContent = a.核心争议;
-  document.getElementById("r-reasoning").textContent = a.推理链路;
-  document.getElementById("r-unanswered").textContent = a.未回答问题;
-  document.getElementById("r-transfer").textContent = a.可平移性;
-  document.getElementById("r-summary").textContent = a.总结;
+
+  // ⚠️ 风险提示（最优先）
+  const riskSection = document.getElementById("risk-section");
+  const riskItems = document.getElementById("risk-items");
+  if (data.风险列表 && data.风险列表.length > 0) {
+    riskSection.style.display = "block";
+    riskItems.innerHTML = data.风险列表.map(r => {
+      const icon = r.等级 === "danger" ? "🔴" : "🟡";
+      return `<div class="risk-item ${r.等级}">${icon} ${r.内容}</div>`;
+    }).join("");
+  } else {
+    riskSection.style.display = "none";
+  }
+
+  // 结构化摘要
+  const structSection = document.getElementById("struct-summary-section");
+  if (a.结构化摘要) {
+    structSection.style.display = "block";
+    document.getElementById("r-struct-summary").textContent = a.结构化摘要;
+  } else {
+    structSection.style.display = "none";
+  }
+
+  // 六维卡片
+  document.getElementById("r-core").textContent = a.核心争议 || "";
+  document.getElementById("r-reasoning").textContent = a.推理链路 || "";
+  document.getElementById("r-unanswered").textContent = a.未回答问题 || "";
+  document.getElementById("r-transfer").textContent = a.可平移性 || "";
+  document.getElementById("r-summary").textContent = a.总结 || "";
+  document.getElementById("r-counter").textContent = a.反例检索 || "（无）";
 
   // 法条统计
   const lawEl = document.getElementById("r-lawstats");
@@ -600,6 +652,7 @@ function 下载报告() {
       判例名: window._lastResult.判例名,
       核心争议: a.核心争议, 推理链路: a.推理链路,
       未回答问题: a.未回答问题, 可平移性: a.可平移性,
+      反例检索: a.反例检索, 结构化摘要: a.结构化摘要,
       总结: a.总结,
       法条统计: window._lastResult.验证.法条统计,
       法条对照: window._lastResult.法条对照,
