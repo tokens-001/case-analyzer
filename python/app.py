@@ -380,6 +380,34 @@ def 历史路由():
             pass
     return jsonify(结果)
 
+@app.route("/case/<fname>")
+def 详情路由(fname):
+    """返回单条判例的完整分析数据，格式与/analyze返回一致"""
+    文件夹 = 用户数据目录()
+    路径 = os.path.join(文件夹, fname)
+    if ".." in fname or not os.path.exists(路径):
+        return jsonify({"error": "文件不存在"}), 404
+    try:
+        with open(路径, "r") as f:
+            d = json.load(f)
+        # 包成和/analyze一样的格式，历史数据缺失的字段填空
+        return jsonify({
+            "判例名": d.get("判例名", ""),
+            "字数": d.get("字数", len(d.get("核心争议", ""))),
+            "分析": {
+                "核心争议": d.get("核心争议", ""),
+                "推理链路": d.get("推理链路", ""),
+                "未回答问题": d.get("未回答问题", ""),
+                "可平移性": d.get("可平移性", ""),
+                "总结": d.get("总结", ""),
+            },
+            "溯源": None,
+            "法条对照": None,
+            "验证": {"通过": True, "问题": [], "法条统计": "历史存档数据"}
+        })
+    except:
+        return jsonify({"error": "读取失败"}), 500
+
 @app.route("/download", methods=["POST"])
 def 下载路由():
     """把分析结果转成可下载的文本报告"""

@@ -471,13 +471,14 @@ function 渲染结果(data) {
 
   // 法条统计
   const lawEl = document.getElementById("r-lawstats");
-  lawEl.textContent = "📋 " + data.验证.法条统计 + "  |  判例字数：" + data.字数;
+  const 法条信息 = (data.验证 && data.验证.法条统计) ? data.验证.法条统计 : "历史存档";
+  lawEl.textContent = "📋 " + 法条信息 + "  |  判例字数：" + (data.字数 || "?");
 
-  // 溯源
+  // 溯源（历史数据可能为null）
   const trace = data.溯源;
   const traceSection = document.getElementById("trace-section");
   const traceItems = document.getElementById("trace-items");
-  if (trace.items && trace.items.length > 0) {
+  if (trace && trace.items && trace.items.length > 0) {
     traceSection.style.display = "block";
     traceItems.innerHTML = trace.items.map(item => {
       const cls = item.有效 ? "" : " invalid";
@@ -486,12 +487,14 @@ function 渲染结果(data) {
         ${item.内容}
       </div>`;
     }).join("");
+  } else if (trace && trace.warning) {
+    traceSection.style.display = "block";
+    traceItems.innerHTML = `<div class="trace-item invalid"><div class="label">⚠️</div>${trace.warning}</div>`;
   } else {
-    traceSection.style.display = trace.warning ? "block" : "none";
-    if (trace.warning) traceItems.innerHTML = `<div class="trace-item invalid"><div class="label">⚠️</div>${trace.warning}</div>`;
+    traceSection.style.display = "none";
   }
 
-  // 法条库对照
+  // 法条库对照（历史数据可能为null）
   const lawSection = document.getElementById("law-section");
   const lawItems = document.getElementById("law-items");
   if (data.法条对照 && data.法条对照.length > 0) {
@@ -508,7 +511,7 @@ function 渲染结果(data) {
 
   // 验证
   const v = document.getElementById("validation");
-  if (data.验证.通过) {
+  if (!data.验证 || data.验证.通过) {
     v.className = "validation pass";
     v.textContent = "✅ 验证通过";
   } else {
@@ -519,7 +522,7 @@ function 渲染结果(data) {
   document.getElementById("results").classList.add("active");
   document.getElementById("results").scrollIntoView({ behavior: "smooth" });
 
-  // 显示下载按钮
+  // 显示下载按钮（历史数据也可以下载）
   document.getElementById("btnDownload").style.display = "inline-block";
   window._lastResult = data;
 }
@@ -583,12 +586,32 @@ function 渲染历史列表(items) {
     return;
   }
   container.innerHTML = items.map(item =>
-    `<div class="history-item">
+    `<div class="history-item" onclick="加载历史详情('${item.文件名}')">
       <div class="h-name">${item.判例名}</div>
       <div class="h-meta">${item.日期} · ${item.文件名}</div>
       <div class="h-summary">${item.总结 || "(无总结)"}</div>
     </div>`
   ).join("");
+}
+
+// ---- 加载历史详情 ----
+async function 加载历史详情(fname) {
+  document.getElementById("loading").classList.add("active");
+  document.getElementById("results").classList.remove("active");
+  document.getElementById("error").classList.remove("active");
+  try {
+    const resp = await fetch(`/case/${encodeURIComponent(fname)}`);
+    const data = await resp.json();
+    if (!resp.ok) {
+      显示错误(data.error || "加载失败");
+      return;
+    }
+    // 历史数据可能缺少溯源/法条对照，渲染函数已兼容
+    data._来自历史 = true;
+    渲染结果(data);
+  } catch (err) {
+    显示错误("加载历史失败: " + err.message);
+  }
 }
 
 function 过滤历史() {
