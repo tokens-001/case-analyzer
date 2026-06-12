@@ -220,6 +220,35 @@
   .validation .warn-item { margin-top: 4px; }
   .validation .warn-item::before { content: "⚠️ "; }
 
+  /* ---- 关联判例 ---- */
+  .related-section {
+    background: #21252b;
+    border: 1px solid #323842;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .related-section h3 { font-size: 14px; font-weight: 600; color: #e5e7eb; margin-bottom: 12px; }
+  .related-item {
+    background: #1a1d23;
+    border: 1px solid #323842;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .related-item:hover { border-color: #5b8def; }
+  .related-item .rel-name { font-size: 14px; color: #e5e7eb; font-weight: 500; }
+  .related-item .rel-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .related-item .rel-laws {
+    font-size: 11px; color: #5b8def; margin-top: 4px;
+    display: flex; flex-wrap: wrap; gap: 4px;
+  }
+  .related-item .rel-laws span {
+    background: #1e2d3d; padding: 2px 8px; border-radius: 10px;
+  }
+
   /* ---- 历史列表 ---- */
   .history-toggle {
     display: flex; align-items: center; gap: 6px;
@@ -337,6 +366,12 @@
 
     <!-- 验证 -->
     <div class="validation pass" id="validation"></div>
+
+    <!-- 关联判例 -->
+    <div class="related-section" id="related-section" style="display:none;">
+      <h3>🔗 关联判例 <span style="font-size:12px;font-weight:400;color:#6b7280;">（引用相同法条）</span></h3>
+      <div id="related-items"></div>
+    </div>
 
     <!-- 下载按钮 -->
     <div style="text-align:center; margin-top:8px;">
@@ -528,6 +563,22 @@ function 渲染结果(data) {
   } else {
     v.className = "validation warn";
     v.innerHTML = data.验证.问题.map(p => `<div class="warn-item">${p}</div>`).join("");
+  }
+
+  // 关联判例
+  const relatedSection = document.getElementById("related-section");
+  const relatedItems = document.getElementById("related-items");
+  if (data.关联判例 && data.关联判例.length > 0) {
+    relatedSection.style.display = "block";
+    relatedItems.innerHTML = data.关联判例.map(item =>
+      `<div class="related-item" onclick="加载历史详情('${item.文件名}')">
+        <div class="rel-name">${item.判例名}</div>
+        <div class="rel-meta">${item.日期} · 共同法条 ${item.共同法条.length} 条</div>
+        <div class="rel-laws">${item.共同法条.map(l => `<span>${l}</span>`).join("")}</div>
+      </div>`
+    ).join("");
+  } else {
+    relatedSection.style.display = "none";
   }
 
   document.getElementById("results").classList.add("active");

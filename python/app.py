@@ -223,6 +223,84 @@ def 法条库查询(*分析列表):
             pass
     return 结果列表
 
+# ---- 6b. 判例关联图谱（基于法条引用同现）----
+def 构建判例索引():
+    """扫描全部已存判例JSON，返回 {法条引用: [判例列表]} 的映射"""
+    索引 = {}
+    文件夹 = 用户数据目录()
+    if not os.path.exists(文件夹):
+        return 索引
+    for fname in os.listdir(文件夹):
+        if not fname.endswith(".json") or fname.startswith("limit_"):
+            continue
+        try:
+            with open(os.path.join(文件夹, fname), "r") as f:
+                d = json.load(f)
+            # 合并四维分析文字，用正则提取法条引用
+            分析文字 = " ".join([
+                d.get("核心争议", ""), d.get("推理链路", ""),
+                d.get("未回答问题", ""), d.get("可平移性", "")
+            ])
+            法条列表 = re.findall(
+                r'(?:《[^》]{2,20}》|[^\s，。；]{2,10}法)\s*第\s*\d+\s*(?:条(?:\s*之\s*[一二三四五六七八九十]+)?)?',
+                分析文字
+            )
+            for 法条 in set(法条列表):
+                if 法条 not in 索引:
+                    索引[法条] = []
+                索引[法条].append({
+                    "文件名": fname,
+                    "判例名": d.get("判例名", ""),
+                    "日期": d.get("日期", ""),
+                    "总结": d.get("总结", "")[:80]
+                })
+        except:
+            pass
+    return 索引
+
+def 查关联判例(判例文件名):
+    """根据一个判例引用的法条，找到其他引用相同法条的判例"""
+    文件夹 = 用户数据目录()
+    路径 = os.path.join(文件夹, 判例文件名)
+    if not os.path.exists(路径):
+        return []
+    try:
+        with open(路径, "r") as f:
+            d = json.load(f)
+        分析文字 = " ".join([
+            d.get("核心争议", ""), d.get("推理链路", ""),
+            d.get("未回答问题", ""), d.get("可平移性", "")
+        ])
+        本文法条 = set(re.findall(
+            r'(?:《[^》]{2,20}》|[^\s，。；]{2,10}法)\s*第\s*\d+\s*(?:条(?:\s*之\s*[一二三四五六七八九十]+)?)?',
+            分析文字
+        ))
+    except:
+        return []
+
+    if not 本文法条:
+        return []
+
+    索引 = 构建判例索引()
+    关联集合 = {}  # 文件名 → {判例名, 日期, 共同法条列表}
+    for 法条 in 本文法条:
+        for 判例 in 索引.get(法条, []):
+            if 判例["文件名"] == 判例文件名:
+                continue  # 不包含自己
+            if 判例["文件名"] not in 关联集合:
+                关联集合[判例["文件名"]] = {
+                    "判例名": 判例["判例名"],
+                    "日期": 判例["日期"],
+                    "文件名": 判例["文件名"],
+                    "总结": 判例["总结"],
+                    "共同法条": []
+                }
+            关联集合[判例["文件名"]]["共同法条"].append(法条)
+
+    # 按共同法条数量排序，最多的在前面
+    结果 = sorted(关联集合.values(), key=lambda x: len(x["共同法条"]), reverse=True)
+    return 结果[:10]
+
 # ---- 7. 验证 ----
 def 验证分析结果(分析1, 分析2, 分析3, 分析4, 总结):
     问题列表 = []
@@ -440,10 +518,16 @@ def 详情路由(fname):
             },
             "溯源": None,
             "法条对照": None,
-            "验证": {"通过": True, "问题": [], "法条统计": "历史存档数据"}
+            "验证": {"通过": True, "问题": [], "法条统计": "历史存档数据"},
+            "关联判例": 查关联判例(fname)
         })
     except:
         return jsonify({"error": "读取失败"}), 500
+
+@app.route("/related/<fname>")
+def 关联路由(fname):
+    """返回与指定判例引用相同法条的其他判例"""
+    return jsonify(查关联判例(fname))
 
 @app.route("/download", methods=["POST"])
 def 下载路由():
