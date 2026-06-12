@@ -33,15 +33,33 @@ def 用户数据目录():
     os.makedirs(目录, exist_ok=True)
     return 目录
 
-# ---- 1. API调用（和原版一样，只是加了超时）----
+# ---- 1. 智能分段（AI引用段落号前，先统一拆分方式）----
+def 智能分段(判例):
+    """把判例文字拆成段落。依次尝试空行→单换行→句号拆分"""
+    段落 = [p.strip() for p in 判例.split("\n\n") if p.strip()]
+    if len(段落) >= 3:
+        return 段落
+    段落 = [p.strip() for p in 判例.split("\n") if p.strip()]
+    if len(段落) >= 3:
+        return 段落
+    raw = re.split(r'(?<=[。！？])', 判例)
+    段落 = [p.strip() for p in raw if p.strip() and len(p.strip()) > 5]
+    if len(段落) >= 2:
+        return 段落
+    return [判例]
+
+# ---- 2. API调用 ----
 def 问AI(问题, 判例, api_key):
+    """发送请求前，先把判例文字加上段落编号，保证AI引用和代码拆分一致"""
+    段落列表 = 智能分段(判例)
+    编号段落 = "\n\n".join(f"[第{i+1}段] {p}" for i, p in enumerate(段落列表))
     try:
         response = requests.post(
             url="https://api.deepseek.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}"},
             json={
                 "model": "deepseek-chat",
-                "messages": [{"role": "user", "content": f"{问题}\n判例文字:{判例}"}],
+                "messages": [{"role": "user", "content": f"{问题}\n判例文字:\n{编号段落}"}],
             },
             timeout=120
         )
@@ -50,7 +68,7 @@ def 问AI(问题, 判例, api_key):
     except Exception as e:
         return f"【错误】API请求失败: {str(e)}"
 
-# ---- 2. 四个分析维度 ----
+# ---- 3. 四个分析维度 ----
 法条提示 = "分析时，请主动引用本案应适用的具体法律条文（如民法典第X条、刑法第X条等）。"
 
 def 核心争议(判例, api_key):
@@ -86,9 +104,9 @@ def 案例总结(判例, 分析1, 分析2, 分析3, 分析4, api_key):
 整合成一段完整总结，涵盖：案件性质、核心裁判逻辑、法律意义。不要分点，不要编号。"""
     return 问AI(总结问题, 判例, api_key)
 
-# ---- 3. 溯源对比（返回结构化数据而非打印）----
+# ---- 4. 溯源对比（返回结构化数据而非打印）----
 def 溯源对比(判例, *分析列表):
-    段落列表 = 判例.split("\n\n")
+    段落列表 = 智能分段(判例)
     总段落数 = len(段落列表)
 
     引用集合 = set()
@@ -109,7 +127,7 @@ def 溯源对比(判例, *分析列表):
 
     return {"引用数": len(引用集合), "总段落数": 总段落数, "items": items}
 
-# ---- 4. 法条统计 ----
+# ---- 5. 法条统计 ----
 def 法条统计(分析文字):
     法条列表 = re.findall(
         r'(?:民法典|刑法|合同法|公司法|劳动法|行政诉讼法|民事诉讼法|刑事诉讼法)\s*第\s*\d+\s*条',
@@ -120,7 +138,7 @@ def 法条统计(分析文字):
         return f"引用法条 {len(法条集合)} 条：" + "、".join(法条集合[:5])
     return "未引用法律条文"
 
-# ---- 5. 法条库查询（返回结构化数据）----
+# ---- 6. 法条库查询（返回结构化数据）----
 def 法条库查询(*分析列表):
     if not os.path.exists(法条库目录):
         return []
@@ -160,7 +178,7 @@ def 法条库查询(*分析列表):
                     pass
     return 结果列表
 
-# ---- 6. 验证 ----
+# ---- 7. 验证 ----
 def 验证分析结果(分析1, 分析2, 分析3, 分析4, 总结):
     问题列表 = []
     if len(分析1) < 20: 问题列表.append("核心争议字数过少，可能API异常")
@@ -175,7 +193,7 @@ def 验证分析结果(分析1, 分析2, 分析3, 分析4, 总结):
 
     return {"通过": len(问题列表) == 0, "问题": 问题列表, "法条统计": 法条结果}
 
-# ---- 7. 存储 ----
+# ---- 8. 存储 ----
 def 存储为JSON(判例名, 分析1, 分析2, 分析3, 分析4, 总结):
     """存储到当前用户的专属目录"""
     # 注意：这里不能用 session，因为 analyze 路由可能还没有初始化 session
@@ -197,7 +215,7 @@ def _存储为JSON_内部(判例名, 分析1, 分析2, 分析3, 分析4, 总结)
         json.dump(数据, f)
     return 文件名
 
-# ---- 8. 每日次数限制 ----
+# ---- 9. 每日次数限制 ----
 每日上限 = int(os.environ.get("DAILY_LIMIT", "3"))
 
 def 获取客户端IP():
