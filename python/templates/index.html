@@ -349,7 +349,14 @@
   <div class="history-toggle" onclick="切换历史()">
     <span id="historyArrow">▶</span> 历史分析记录
   </div>
-  <div class="history-list" id="historyList"></div>
+  <div class="history-list" id="historyList">
+    <div style="margin-bottom:12px;">
+      <input type="text" id="searchInput" placeholder="搜索判例名、争议、总结…" 
+        style="width:100%;background:#1a1d23;border:1px solid #323842;border-radius:6px;padding:10px 14px;color:#e5e7eb;font-size:14px;"
+        oninput="过滤历史()">
+    </div>
+    <div id="historyItems"></div>
+  </div>
 
 </div>
 
@@ -517,6 +524,8 @@ function 下载报告() {
 }
 
 // ---- 历史记录 ----
+var _historyData = [];
+
 async function 切换历史() {
   const list = document.getElementById("historyList");
   const arrow = document.getElementById("historyArrow");
@@ -530,24 +539,39 @@ async function 切换历史() {
   // 加载历史
   try {
     const resp = await fetch("/history");
-    const items = await resp.json();
-    if (items.length === 0) {
-      list.innerHTML = "<div style='color:#6b7280;font-size:13px;padding:12px;'>暂无历史记录</div>";
-    } else {
-      list.innerHTML = items.map(item =>
-        `<div class="history-item">
-          <div class="h-name">${item.判例名}</div>
-          <div class="h-meta">${item.日期} · ${item.文件名}</div>
-          <div class="h-summary">${item.总结 || "(无总结)"}</div>
-        </div>`
-      ).join("");
-    }
+    _historyData = await resp.json();
+    渲染历史列表(_historyData);
     list.classList.add("active");
     arrow.textContent = "▼";
   } catch (err) {
-    list.innerHTML = "<div style='color:#e05d5d;font-size:13px;padding:12px;'>加载失败</div>";
+    document.getElementById("historyItems").innerHTML = "<div style='color:#e05d5d;font-size:13px;padding:12px;'>加载失败</div>";
     list.classList.add("active");
   }
+}
+
+function 渲染历史列表(items) {
+  const container = document.getElementById("historyItems");
+  if (items.length === 0) {
+    container.innerHTML = "<div style='color:#6b7280;font-size:13px;padding:12px;'>暂无匹配记录</div>";
+    return;
+  }
+  container.innerHTML = items.map(item =>
+    `<div class="history-item">
+      <div class="h-name">${item.判例名}</div>
+      <div class="h-meta">${item.日期} · ${item.文件名}</div>
+      <div class="h-summary">${item.总结 || "(无总结)"}</div>
+    </div>`
+  ).join("");
+}
+
+function 过滤历史() {
+  const kw = document.getElementById("searchInput").value.trim();
+  if (!kw) { 渲染历史列表(_historyData); return; }
+  const filtered = _historyData.filter(item =>
+    (item.判例名 && item.判例名.includes(kw)) ||
+    (item.总结 && item.总结.includes(kw))
+  );
+  渲染历史列表(filtered);
 }
 </script>
 
