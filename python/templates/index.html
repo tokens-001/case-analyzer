@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>判例助手</title>
+<style>
+  /* ---- 基础重置 ---- */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #1a1d23;
+    color: #d1d5db;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ---- 头部 ---- */
+  .header {
+    background: #21252b;
+    border-bottom: 1px solid #323842;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header h1 { font-size: 20px; font-weight: 600; color: #e5e7eb; }
+  .header .subtitle { font-size: 13px; color: #6b7280; margin-left: 12px; }
+
+  /* ---- 主布局 ---- */
+  .main { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
+
+  /* ---- 输入区 ---- */
+  .input-section {
+    background: #21252b;
+    border: 1px solid #323842;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .input-row { display: flex; gap: 12px; margin-bottom: 14px; align-items: center; }
+  .input-row label { font-size: 14px; color: #9ca3af; white-space: nowrap; min-width: 70px; }
+  .input-row input[type="text"] {
+    flex: 1;
+    background: #1a1d23;
+    border: 1px solid #323842;
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: #e5e7eb;
+    font-size: 14px;
+  }
+  .input-row input[type="text"]:focus { outline: none; border-color: #5b8def; }
+
+  textarea {
+    width: 100%;
+    height: 260px;
+    background: #1a1d23;
+    border: 1px solid #323842;
+    border-radius: 6px;
+    padding: 14px;
+    color: #e5e7eb;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.8;
+    resize: vertical;
+    margin-bottom: 14px;
+  }
+  textarea:focus { outline: none; border-color: #5b8def; }
+
+  .btn-row { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: #5b8def; color: #fff; }
+  .btn-secondary { background: #323842; color: #9ca3af; }
+  .btn-ghost {
+    background: transparent;
+    color: #6b7280;
+    border: 1px solid #323842;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  /* 文件上传伪装按钮 */
+  .file-upload { position: relative; }
+  .file-upload input[type="file"] { position: absolute; opacity: 0; width: 0; height: 0; }
+
+  /* ---- 加载状态 ---- */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 32px;
+    color: #6b7280;
+    font-size: 14px;
+  }
+  .loading.active { display: block; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #323842;
+    border-top-color: #5b8def;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- 错误提示 ---- */
+  .error {
+    display: none;
+    background: #3b1c1c;
+    border: 1px solid #7f2a2a;
+    color: #fca5a5;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+  .error.active { display: block; }
+
+  /* ---- 结果区 ---- */
+  .results { display: none; }
+  .results.active { display: block; }
+
+  /* 四个分析卡片 2×2 网格 */
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .card {
+    background: #21252b;
+    border: 1px solid #323842;
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #5b8def;
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+  }
+  .card .content {
+    font-size: 13.5px;
+    color: #c4c9d1;
+    white-space: pre-wrap;
+    line-height: 1.8;
+  }
+
+  /* 总结卡片 横跨整行 */
+  .card-summary {
+    background: #21252b;
+    border: 1px solid #323842;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-summary h3 { font-size: 14px; font-weight: 600; color: #e5e7eb; margin-bottom: 10px; }
+  .card-summary .content { font-size: 14px; color: #c4c9d1; line-height: 1.9; }
+
+  /* 溯源区 */
+  .trace-section {
+    background: #21252b;
+    border: 1px solid #323842;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .trace-section h3 { font-size: 14px; font-weight: 600; color: #e5e7eb; margin-bottom: 12px; }
+  .trace-item {
+    background: #1a1d23;
+    border-left: 3px solid #5b8def;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: #9ca3af;
+  }
+  .trace-item .label { font-size: 11px; color: #5b8def; font-weight: 600; margin-bottom: 4px; }
+  .trace-item.invalid { border-left-color: #e05d5d; }
+  .trace-item.invalid .label { color: #e05d5d; }
+
+  /* 法条对照 */
+  .law-section {
+    background: #21252b;
+    border: 1px solid #323842;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .law-section h3 { font-size: 14px; font-weight: 600; color: #e5e7eb; margin-bottom: 12px; }
+  .law-item {
+    background: #1a1d23;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #9ca3af;
+  }
+  .law-item .law-name { font-size: 11px; color: #5b8def; font-weight: 600; margin-bottom: 4px; }
+
+  /* 验证 */
+  .validation {
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    margin-bottom: 16px;
+  }
+  .validation.pass { background: #1a2e1a; border: 1px solid #3a5a3a; color: #8ccb8c; }
+  .validation.warn { background: #2e2a1a; border: 1px solid #5a4a3a; color: #cbbe8c; }
+  .validation .warn-item { margin-top: 4px; }
+  .validation .warn-item::before { content: "⚠️ "; }
+
+  /* ---- 历史列表 ---- */
+  .history-toggle {
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; font-size: 13px; color: #6b7280;
+    margin-bottom: 16px; user-select: none;
+  }
+  .history-toggle:hover { color: #9ca3af; }
+  .history-list { display: none; }
+  .history-list.active { display: block; }
+  .history-item {
+    background: #21252b;
+    border: 1px solid #323842;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .history-item:hover { border-color: #5b8def; }
+  .history-item .h-name { font-size: 14px; color: #e5e7eb; font-weight: 500; }
+  .history-item .h-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .history-item .h-summary { font-size: 13px; color: #9ca3af; margin-top: 6px; }
+
+  /* ---- 响应式：手机端单列 ---- */
+  @media (max-width: 700px) {
+    .card-grid { grid-template-columns: 1fr; }
+    .header { padding: 14px 18px; }
+    .main { padding: 16px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 头部 -->
+<div class="header">
+  <div style="display:flex;align-items:baseline;">
+    <h1>判例助手</h1>
+    <span class="subtitle">AI驱动的判例分析工具</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- 输入区 -->
+  <div class="input-section">
+    <div class="input-row">
+      <label>判例名称</label>
+      <input type="text" id="caseName" placeholder="例：张某诉李某合同纠纷案">
+    </div>
+
+    <textarea id="caseText" placeholder="在此粘贴判例全文……"></textarea>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="开始分析()">开始分析</button>
+      <span class="file-upload">
+        <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">📂 从文件读取</button>
+        <input type="file" id="fileInput" accept=".txt" onchange="读文件(this)">
+      </span>
+      <button class="btn btn-ghost" onclick="清空()">清空</button>
+    </div>
+  </div>
+
+  <!-- 加载中 -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    AI正在分析判例……四个维度并行处理中，约需20-40秒
+  </div>
+
+  <!-- 错误 -->
+  <div class="error" id="error"></div>
+
+  <!-- 结果区 -->
+  <div class="results" id="results">
+
+    <!-- 四维分析卡片 -->
+    <div class="card-grid">
+      <div class="card">
+        <h3>一、核心争议</h3>
+        <div class="content" id="r-core">-</div>
+      </div>
+      <div class="card">
+        <h3>二、推理链路</h3>
+        <div class="content" id="r-reasoning">-</div>
+      </div>
+      <div class="card">
+        <h3>三、未回答问题</h3>
+        <div class="content" id="r-unanswered">-</div>
+      </div>
+      <div class="card">
+        <h3>四、可平移性</h3>
+        <div class="content" id="r-transfer">-</div>
+      </div>
+    </div>
+
+    <!-- 总结 -->
+    <div class="card-summary">
+      <h3>综合总结</h3>
+      <div class="content" id="r-summary"></div>
+    </div>
+
+    <!-- 法条统计 -->
+    <div class="validation pass" id="r-lawstats" style="font-size:13px; color:#8ccb8c;"></div>
+
+    <!-- 溯源对比 -->
+    <div class="trace-section" id="trace-section" style="display:none;">
+      <h3>溯源对比</h3>
+      <div id="trace-items"></div>
+    </div>
+
+    <!-- 法条库对照 -->
+    <div class="law-section" id="law-section" style="display:none;">
+      <h3>法条库对照</h3>
+      <div id="law-items"></div>
+    </div>
+
+    <!-- 验证 -->
+    <div class="validation pass" id="validation"></div>
+
+  </div>
+
+  <!-- 历史记录 -->
+  <div class="history-toggle" onclick="切换历史()">
+    <span id="historyArrow">▶</span> 历史分析记录
+  </div>
+  <div class="history-list" id="historyList"></div>
+
+</div>
+
+<script>
+// ============================================================
+// 前端交互逻辑
+// ============================================================
+
+// ---- 文件读取 ----
+function 读文件(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById("caseText").value = e.target.result;
+    // 用文件名当判例名（去扩展名）
+    if (!document.getElementById("caseName").value) {
+      document.getElementById("caseName").value = file.name.replace(/\.\w+$/, "");
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ---- 清空 ----
+function 清空() {
+  document.getElementById("caseName").value = "";
+  document.getElementById("caseText").value = "";
+  document.getElementById("results").classList.remove("active");
+  document.getElementById("error").classList.remove("active");
+}
+
+// ---- 开始分析 ----
+async function 开始分析() {
+  const name = document.getElementById("caseName").value.trim();
+  const text = document.getElementById("caseText").value.trim();
+
+  if (!text) {
+    显示错误("请先输入或上传判例文字");
+    return;
+  }
+
+  // 显示加载
+  document.getElementById("loading").classList.add("active");
+  document.getElementById("results").classList.remove("active");
+  document.getElementById("error").classList.remove("active");
+
+  try {
+    const response = await fetch("/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name, text: text })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      显示错误(data.error || "分析失败");
+      return;
+    }
+
+    渲染结果(data);
+  } catch (err) {
+    显示错误("网络请求失败: " + err.message);
+  }
+}
+
+// ---- 显示错误 ----
+function 显示错误(msg) {
+  document.getElementById("loading").classList.remove("active");
+  const el = document.getElementById("error");
+  el.textContent = msg;
+  el.classList.add("active");
+}
+
+// ---- 渲染结果 ----
+function 渲染结果(data) {
+  document.getElementById("loading").classList.remove("active");
+
+  const a = data.分析;
+  document.getElementById("r-core").textContent = a.核心争议;
+  document.getElementById("r-reasoning").textContent = a.推理链路;
+  document.getElementById("r-unanswered").textContent = a.未回答问题;
+  document.getElementById("r-transfer").textContent = a.可平移性;
+  document.getElementById("r-summary").textContent = a.总结;
+
+  // 法条统计
+  const lawEl = document.getElementById("r-lawstats");
+  lawEl.textContent = "📋 " + data.验证.法条统计 + "  |  判例字数：" + data.字数;
+
+  // 溯源
+  const trace = data.溯源;
+  const traceSection = document.getElementById("trace-section");
+  const traceItems = document.getElementById("trace-items");
+  if (trace.items && trace.items.length > 0) {
+    traceSection.style.display = "block";
+    traceItems.innerHTML = trace.items.map(item => {
+      const cls = item.有效 ? "" : " invalid";
+      return `<div class="trace-item${cls}">
+        <div class="label">原文第${item.段号}段</div>
+        ${item.内容}
+      </div>`;
+    }).join("");
+  } else {
+    traceSection.style.display = trace.warning ? "block" : "none";
+    if (trace.warning) traceItems.innerHTML = `<div class="trace-item invalid"><div class="label">⚠️</div>${trace.warning}</div>`;
+  }
+
+  // 法条库对照
+  const lawSection = document.getElementById("law-section");
+  const lawItems = document.getElementById("law-items");
+  if (data.法条对照 && data.法条对照.length > 0) {
+    lawSection.style.display = "block";
+    lawItems.innerHTML = data.法条对照.map(item =>
+      `<div class="law-item">
+        <div class="law-name">${item.法名} · ${item.引用}</div>
+        ${item.条文}
+      </div>`
+    ).join("");
+  } else {
+    lawSection.style.display = "none";
+  }
+
+  // 验证
+  const v = document.getElementById("validation");
+  if (data.验证.通过) {
+    v.className = "validation pass";
+    v.textContent = "✅ 验证通过";
+  } else {
+    v.className = "validation warn";
+    v.innerHTML = data.验证.问题.map(p => `<div class="warn-item">${p}</div>`).join("");
+  }
+
+  document.getElementById("results").classList.add("active");
+  document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+}
+
+// ---- 历史记录 ----
+async function 切换历史() {
+  const list = document.getElementById("historyList");
+  const arrow = document.getElementById("historyArrow");
+
+  if (list.classList.contains("active")) {
+    list.classList.remove("active");
+    arrow.textContent = "▶";
+    return;
+  }
+
+  // 加载历史
+  try {
+    const resp = await fetch("/history");
+    const items = await resp.json();
+    if (items.length === 0) {
+      list.innerHTML = "<div style='color:#6b7280;font-size:13px;padding:12px;'>暂无历史记录</div>";
+    } else {
+      list.innerHTML = items.map(item =>
+        `<div class="history-item">
+          <div class="h-name">${item.判例名}</div>
+          <div class="h-meta">${item.日期} · ${item.文件名}</div>
+          <div class="h-summary">${item.总结 || "(无总结)"}</div>
+        </div>`
+      ).join("");
+    }
+    list.classList.add("active");
+    arrow.textContent = "▼";
+  } catch (err) {
+    list.innerHTML = "<div style='color:#e05d5d;font-size:13px;padding:12px;'>加载失败</div>";
+    list.classList.add("active");
+  }
+}
+</script>
+
+</body>
+</html>
