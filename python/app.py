@@ -203,6 +203,24 @@ def 法条库查询(*分析列表):
                             })
                 except:
                     pass
+    # ---- 记录缺失法条：AI引用过但法条库里没有的，写到missing文件方便以后补 ----
+    已找到引用 = {item["引用"] for item in 结果列表}
+    缺失引用 = [r for r in 查找列表[:5] if r not in 已找到引用]
+    if 缺失引用:
+        缺失日志 = os.path.join(法条库目录, "missing_laws.txt")
+        try:
+            已有 = set()
+            if os.path.exists(缺失日志):
+                with open(缺失日志, "r") as f:
+                    for line in f:
+                        已有.add(line.strip())
+            新增 = [r for r in 缺失引用 if r not in 已有]
+            if 新增:
+                with open(缺失日志, "a") as f:
+                    for r in 新增:
+                        f.write(f"{date.today()}\t{r}\n")
+        except:
+            pass
     return 结果列表
 
 # ---- 7. 验证 ----
