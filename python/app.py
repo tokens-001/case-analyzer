@@ -270,6 +270,65 @@ def 历史路由():
             pass
     return jsonify(结果)
 
+@app.route("/download", methods=["POST"])
+def 下载路由():
+    """把分析结果转成可下载的文本报告"""
+    data = request.json
+    报告 = f"""判例分析报告
+{'='*50}
+判例名称：{data.get('判例名', '')}
+分析日期：{date.today()}
+
+一、核心争议
+{'─'*40}
+{data.get('核心争议', '')}
+
+二、推理链路
+{'─'*40}
+{data.get('推理链路', '')}
+
+三、未回答问题
+{'─'*40}
+{data.get('未回答问题', '')}
+
+四、可平移性
+{'─'*40}
+{data.get('可平移性', '')}
+
+五、综合总结
+{'─'*40}
+{data.get('总结', '')}
+
+六、法条统计
+{'─'*40}
+{data.get('法条统计', '')}
+
+七、法条对照
+{'─'*40}
+"""
+    for 条目 in data.get('法条对照', []):
+        报告 += f"\n【{条目.get('法名', '')}】{条目.get('引用', '')}\n{条目.get('条文', '')}\n"
+
+    报告 += f"""
+八、溯源对比
+{'─'*40}
+"""
+    for item in data.get('溯源', {}).get('items', []):
+        mark = "" if item.get('有效') else "⚠️ "
+        报告 += f"\n{mark}原文第{item.get('段号', '')}段：\n{item.get('内容', '')}\n"
+
+    报告 += f"""
+{'='*50}
+判例助手自动生成 | {date.today()}
+"""
+
+    from flask import Response
+    return Response(
+        报告,
+        mimetype="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={data.get('判例名', 'report')}_分析报告.txt"}
+    )
+
 if __name__ == "__main__":
     print("判例助手网页版已启动 → http://127.0.0.1:5050")
     app.run(debug=True, host="0.0.0.0", port=5050)

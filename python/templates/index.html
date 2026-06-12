@@ -338,6 +338,11 @@
     <!-- 验证 -->
     <div class="validation pass" id="validation"></div>
 
+    <!-- 下载按钮 -->
+    <div style="text-align:center; margin-top:8px;">
+      <button class="btn btn-primary" onclick="下载报告()" id="btnDownload" style="display:none;">📥 下载分析报告</button>
+    </div>
+
   </div>
 
   <!-- 历史记录 -->
@@ -479,6 +484,36 @@ function 渲染结果(data) {
 
   document.getElementById("results").classList.add("active");
   document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+
+  // 显示下载按钮
+  document.getElementById("btnDownload").style.display = "inline-block";
+  window._lastResult = data;
+}
+
+// ---- 下载报告 ----
+function 下载报告() {
+  if (!window._lastResult) return;
+  const a = window._lastResult.分析;
+  fetch("/download", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      判例名: window._lastResult.判例名,
+      核心争议: a.核心争议, 推理链路: a.推理链路,
+      未回答问题: a.未回答问题, 可平移性: a.可平移性,
+      总结: a.总结,
+      法条统计: window._lastResult.验证.法条统计,
+      法条对照: window._lastResult.法条对照,
+      溯源: window._lastResult.溯源
+    })
+  }).then(res => res.blob()).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const el = document.createElement("a");
+    el.href = url;
+    el.download = (window._lastResult.判例名 || "report") + "_分析报告.txt";
+    el.click();
+    URL.revokeObjectURL(url);
+  });
 }
 
 // ---- 历史记录 ----
