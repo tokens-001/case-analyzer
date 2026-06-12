@@ -187,6 +187,27 @@ def _存储为JSON_内部(判例名, 分析1, 分析2, 分析3, 分析4, 总结)
         json.dump(数据, f)
     return 文件名
 
+# ---- 8. 每日次数限制 ----
+每日上限 = int(os.environ.get("DAILY_LIMIT", "5"))
+
+def 检查次数(uid):
+    """检查今日剩余次数，返回True=可用，False=已用完。每次分析后次数+1"""
+    今天 = str(date.today())
+    计数文件 = os.path.join(用户数据目录(), f"limit_{今天}.json")
+    if os.path.exists(计数文件):
+        with open(计数文件, "r") as f:
+            计数 = json.load(f)
+    else:
+        计数 = {}
+
+    已用 = 计数.get(uid, 0)
+    if 已用 >= 每日上限:
+        return False
+    计数[uid] = 已用 + 1
+    with open(计数文件, "w") as f:
+        json.dump(计数, f)
+    return True
+
 # ============================================================
 # Flask 路由
 # ============================================================
@@ -198,6 +219,10 @@ def 首页():
 @app.route("/analyze", methods=["POST"])
 def 分析路由():
     """接收判例文字，返回完整分析结果（JSON）"""
+    # ---- 每日次数限制 ----
+    uid = 获取用户ID()
+    if not 检查次数(uid):
+        return jsonify({"error": "今日分析次数已用完，请明天再来。"}), 429
     api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
         return jsonify({"error": "未设置 DEEPSEEK_API_KEY 环境变量"}), 500
