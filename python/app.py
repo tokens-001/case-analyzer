@@ -4,7 +4,11 @@
 import os, json, re, requests, uuid
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, session
+
+# 加载 .env 文件（本地开发用；生产环境直接用系统环境变量）
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 app = Flask(__name__)
 # secret_key: 生产环境从环境变量读，本地开发自动生成
