@@ -240,8 +240,7 @@
   }
   .history-item:hover { border-color: #5b8def; }
   .history-item .h-name { font-size: 14px; color: #e5e7eb; font-weight: 500; }
-  .history-item .h-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
-  .history-item .h-summary { font-size: 13px; color: #9ca3af; margin-top: 6px; }
+  .history-item .h-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
 
   /* ---- 响应式：手机端单列 ---- */
   @media (max-width: 700px) {
@@ -588,8 +587,7 @@ function 渲染历史列表(items) {
   container.innerHTML = items.map(item =>
     `<div class="history-item" onclick="加载历史详情('${item.文件名}')">
       <div class="h-name">${item.判例名}</div>
-      <div class="h-meta">${item.日期} · ${item.文件名}</div>
-      <div class="h-summary">${item.总结 || "(无总结)"}</div>
+      <div class="h-meta">${item.日期}</div>
     </div>`
   ).join("");
 }
