@@ -204,8 +204,8 @@
   .card:nth-child(2)::before { background: var(--purple); }
   .card:nth-child(3)::before { background: var(--amber); }
   .card:nth-child(4)::before { background: var(--teal); }
-  .card:nth-child(5)::before { background: var(--green); }
-  .card:nth-child(6)::before { background: var(--red); }
+  .card:nth-child(5)::before { background: var(--red); }
+  .card:nth-child(6)::before { background: var(--orange); }
   .card:hover { border-color: #484f58; box-shadow: 0 4px 20px rgba(0,0,0,.25); }
   .card h3 {
     font-size: 13px; font-weight: 700; margin-bottom: 12px;
@@ -215,9 +215,10 @@
   .card:nth-child(2) h3 { color: var(--purple); }
   .card:nth-child(3) h3 { color: var(--amber); }
   .card:nth-child(4) h3 { color: var(--teal); }
-  .card:nth-child(5) h3 { color: var(--green); }
-  .card:nth-child(6) { border-color: rgba(248,81,73,.25); }
-  .card:nth-child(6) h3 { color: var(--red); }
+  .card:nth-child(5) { border-color: rgba(248,81,73,.25); }
+  .card:nth-child(5) h3 { color: var(--red); }
+  .card:nth-child(6) { border-color: rgba(240,136,62,.25); }
+  .card:nth-child(6) h3 { color: var(--orange); }
   .card .content {
     font-size: 13px; color: var(--text-dim);
     white-space: pre-wrap; line-height: 1.85;
@@ -335,12 +336,67 @@
   .history-item .h-name { font-size: 14px; color: var(--text-bright); font-weight: 600; }
   .history-item .h-meta { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
 
+  /* 可信度仪表盘 */
+  .trust-dashboard {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px 26px; margin-bottom: 20px;
+    display: flex; gap: 28px; align-items: center; flex-wrap: wrap;
+  }
+  .trust-score-ring {
+    width: 80px; height: 80px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .trust-score-ring.high { background: rgba(63,185,80,.12); border: 3px solid var(--green); color: var(--green); }
+  .trust-score-ring.mid { background: rgba(210,153,29,.12); border: 3px solid var(--amber); color: var(--amber); }
+  .trust-score-ring.low { background: rgba(248,81,73,.12); border: 3px solid var(--red); color: var(--red); }
+  .trust-detail { flex: 1; min-width: 200px; }
+  .trust-detail .trust-label { font-size: 12px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.5px; }
+  .trust-detail .trust-sub { font-size: 13px; color: var(--text); margin-top: 4px; }
+  .trust-breakdown { font-size: 12px; color: var(--text-dim); margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .trust-breakdown .tbitem { display: flex; align-items: center; gap: 4px; }
+  .trust-breakdown .tbitem.up { color: var(--green); }
+  .trust-breakdown .tbitem.down { color: var(--red); }
+
+  /* 相邻法条 */
+  .adjacent-section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 22px; margin-bottom: 16px;
+  }
+  .adjacent-section h3 { font-size: 13px; font-weight: 700; color: var(--text-bright); margin-bottom: 14px; }
+  .adjacent-item {
+    background: var(--surface2); padding: 10px 14px; margin-bottom: 6px;
+    border-radius: 8px; font-size: 12px; color: var(--text-dim);
+    border: 1px solid var(--border);
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .adjacent-item .adj-tag {
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .adj-tag.before { background: rgba(88,166,255,.12); color: var(--blue); }
+  .adj-tag.after { background: rgba(163,113,247,.12); color: var(--purple); }
+
+  /* 折叠区 */
+  .collapse-toggle {
+    cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .collapse-toggle:hover { opacity: 0.8; }
+  .collapse-toggle .arrow { transition: transform .2s; font-size: 11px; }
+  .collapse-toggle.open .arrow { transform: rotate(90deg); }
+  .collapse-body { display: none; margin-top: 14px; }
+  .collapse-body.open { display: block; }
+
   /* 响应式 */
   @media (max-width: 700px) {
     .card-grid { grid-template-columns: 1fr; }
     .header { padding: 14px 18px; }
     .main { padding: 16px 12px; }
     .input-section { padding: 18px; }
+    .trust-dashboard { flex-direction: column; align-items: flex-start; }
   }
 </style>
 </head>
@@ -398,6 +454,16 @@
       <div id="risk-items"></div>
     </div>
 
+    <!-- 可信度仪表盘 -->
+    <div class="trust-dashboard" id="trust-dashboard" style="display:none;">
+      <div class="trust-score-ring" id="trust-ring">--</div>
+      <div class="trust-detail">
+        <div class="trust-label">分析可信度</div>
+        <div class="trust-sub" id="trust-sub"></div>
+        <div class="trust-breakdown" id="trust-breakdown"></div>
+      </div>
+    </div>
+
     <!-- 结构化摘要：事实→争议→理由→结果 -->
     <div class="card-summary" id="struct-summary-section" style="display:none;">
       <h3>📐 判决结构化</h3>
@@ -406,30 +472,24 @@
 
     <!-- 六维分析卡片 2×3 -->
     <div class="card-grid">
-      <div class="card">
-        <h3>🎯 核心争议</h3>
-        <div class="content" id="r-core">-</div>
-      </div>
-      <div class="card">
-        <h3>🧠 推理链路</h3>
-        <div class="content" id="r-reasoning">-</div>
-      </div>
-      <div class="card">
-        <h3>❓ 未回答问题</h3>
-        <div class="content" id="r-unanswered">-</div>
-      </div>
-      <div class="card">
-        <h3>🔀 可平移性</h3>
-        <div class="content" id="r-transfer">-</div>
-      </div>
-      <div class="card">
-        <h3>📋 综合总结</h3>
-        <div class="content" id="r-summary"></div>
-      </div>
-      <div class="card">
-        <h3>⚔️ 反例检索</h3>
-        <div class="content" id="r-counter">-</div>
-      </div>
+      <div class="card"><h3>🎯 核心争议</h3><div class="content" id="r-core">-</div></div>
+      <div class="card"><h3>🧠 推理链路</h3><div class="content" id="r-reasoning">-</div></div>
+      <div class="card"><h3>❓ 未回答问题</h3><div class="content" id="r-unanswered">-</div></div>
+      <div class="card"><h3>🔀 可平移性</h3><div class="content" id="r-transfer">-</div></div>
+      <div class="card"><h3>⚔️ 反例检索</h3><div class="content" id="r-counter">-</div></div>
+      <div class="card" style="border-color:rgba(248,136,62,.25);"><h3 style="color:var(--orange);">🔗 论证链检测</h3><div class="content" id="r-argchain">-</div></div>
+    </div>
+
+    <!-- 综合总结 -->
+    <div class="card-summary" id="summary-card" style="display:none; border-left-color:var(--green);">
+      <h3>📋 综合总结</h3>
+      <div class="content" id="r-summary"></div>
+    </div>
+
+    <!-- 相邻法条发现 -->
+    <div class="adjacent-section" id="adjacent-section" style="display:none;">
+      <h3>📎 相邻法条 <span style="font-size:12px;font-weight:400;color:var(--text-dim);">（引用法条附近可能相关的条文）</span></h3>
+      <div id="adjacent-items"></div>
     </div>
 
     <!-- 法条统计 -->
@@ -437,14 +497,14 @@
 
     <!-- 溯源对比 -->
     <div class="trace-section" id="trace-section" style="display:none;">
-      <h3>🔍 溯源对比</h3>
-      <div id="trace-items"></div>
+      <h3 class="collapse-toggle" onclick="this.classList.toggle('open');document.getElementById('trace-body').classList.toggle('open')"><span class="arrow">▶</span> 🔍 溯源对比</h3>
+      <div class="collapse-body" id="trace-body"><div id="trace-items"></div></div>
     </div>
 
     <!-- 法条库对照 -->
     <div class="law-section" id="law-section" style="display:none;">
-      <h3>📖 法条库对照</h3>
-      <div id="law-items"></div>
+      <h3 class="collapse-toggle" onclick="this.classList.toggle('open');document.getElementById('law-body').classList.toggle('open')"><span class="arrow">▶</span> 📖 法条库对照</h3>
+      <div class="collapse-body" id="law-body"><div id="law-items"></div></div>
     </div>
 
     <!-- 验证 -->
@@ -452,8 +512,8 @@
 
     <!-- 关联判例 -->
     <div class="related-section" id="related-section" style="display:none;">
-      <h3>🔗 关联判例 <span style="font-size:12px;font-weight:400;color:#6b7280;">（引用相同法条）</span></h3>
-      <div id="related-items"></div>
+      <h3 class="collapse-toggle" onclick="this.classList.toggle('open');document.getElementById('related-body').classList.toggle('open')"><span class="arrow">▶</span> 🔗 关联判例 <span style="font-size:12px;font-weight:400;color:var(--text-dim);">（引用相同法条）</span></h3>
+      <div class="collapse-body" id="related-body"><div id="related-items"></div></div>
     </div>
 
     <!-- 下载按钮 -->
@@ -537,7 +597,7 @@ async function 开始分析() {
   document.getElementById("loading").classList.add("active");
   document.getElementById("results").classList.remove("active");
   document.getElementById("error").classList.remove("active");
-  document.querySelector(".loading").innerHTML = '<div class="spinner"></div>AI正在六维分析判例……含反例检索与结构化摘要，约需30-50秒';
+  document.querySelector(".loading").innerHTML = '<div class="spinner"></div>AI正在七维分析判例……含论证链检测与反例检索，约需35-55秒';
 
   try {
     const response = await fetch("/analyze", {
@@ -605,13 +665,48 @@ function 渲染结果(data) {
     structSection.style.display = "none";
   }
 
-  // 六维卡片
+  // 可信度仪表盘
+  if (data.可信度) {
+    const t = data.可信度;
+    document.getElementById("trust-dashboard").style.display = "flex";
+    const ring = document.getElementById("trust-ring");
+    ring.textContent = t.分数;
+    ring.className = "trust-score-ring " + (t.等级 === "高" ? "high" : t.等级 === "中" ? "mid" : "low");
+    document.getElementById("trust-sub").textContent = "等级：" + (t.等级 === "高" ? "可信" : t.等级 === "中" ? "需审阅" : "不可信");
+    document.getElementById("trust-breakdown").innerHTML = (t.明细 || []).map(d =>
+      `<span class="tbitem ${d.影响 > 0 ? 'up' : 'down'}">${d.影响 > 0 ? '▲' : '▼'} ${d.来源}</span>`
+    ).join("");
+  } else {
+    document.getElementById("trust-dashboard").style.display = "none";
+  }
+
+  // 七维卡片
   document.getElementById("r-core").textContent = a.核心争议 || "";
   document.getElementById("r-reasoning").textContent = a.推理链路 || "";
   document.getElementById("r-unanswered").textContent = a.未回答问题 || "";
   document.getElementById("r-transfer").textContent = a.可平移性 || "";
-  document.getElementById("r-summary").textContent = a.总结 || "";
   document.getElementById("r-counter").textContent = a.反例检索 || "（无）";
+  document.getElementById("r-argchain").textContent = a.论证链检测 || "（无）";
+
+  // 综合总结（独立卡片）
+  document.getElementById("r-summary").textContent = a.总结 || "";
+  document.getElementById("summary-card").style.display = a.总结 ? "block" : "none";
+
+  // 相邻法条
+  const adjSection = document.getElementById("adjacent-section");
+  const adjItems = document.getElementById("adjacent-items");
+  if (data.相邻法条 && data.相邻法条.length > 0) {
+    adjSection.style.display = "block";
+    adjItems.innerHTML = data.相邻法条.map(item => {
+      const cls = item.关系 === "前条" ? "before" : "after";
+      return `<div class="adjacent-item">
+        <span class="adj-tag ${cls}">${item.关系}</span>
+        <div><strong>${item.相邻条文}</strong> <span style="color:#484f58;">← ${item.引用法条}</span><br>${item.内容}</div>
+      </div>`;
+    }).join("");
+  } else {
+    adjSection.style.display = "none";
+  }
 
   // 法条统计
   const lawEl = document.getElementById("r-lawstats");
