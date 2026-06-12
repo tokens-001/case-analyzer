@@ -498,12 +498,24 @@ function 渲染结果(data) {
   const lawItems = document.getElementById("law-items");
   if (data.法条对照 && data.法条对照.length > 0) {
     lawSection.style.display = "block";
-    lawItems.innerHTML = data.法条对照.map(item =>
-      `<div class="law-item">
-        <div class="law-name">${item.法名} · ${item.引用}</div>
+    lawItems.innerHTML = data.法条对照.map(item => {
+      // 状态标签颜色
+      let 状态色 = "#9ca3af", 状态文字 = item.状态 || "未知";
+      if (item.状态 === "现行有效") { 状态色 = "#4ade80"; 状态文字 = "✅ 现行有效"; }
+      else if (item.状态 === "已修订") { 状态色 = "#facc15"; 状态文字 = "⚠️ 已修订"; }
+      else if (item.状态 === "已废止") { 状态色 = "#f87171"; 状态文字 = "❌ 已废止"; }
+      let 附注 = "";
+      if (item.施行日期) 附注 += ` · 施行: ${item.施行日期}`;
+      if (item.取代) 附注 += ` · ${item.取代}`;
+      return `<div class="law-item">
+        <div class="law-name">
+          ${item.法名} · ${item.引用}
+          <span style="color:${状态色};font-size:11px;margin-left:6px;">${状态文字}</span>
+        </div>
         ${item.条文}
-      </div>`
-    ).join("");
+        ${附注 ? `<div style="font-size:11px;color:#6b7280;margin-top:4px;">${附注}</div>` : ""}
+      </div>`;
+    }).join("");
   } else {
     lawSection.style.display = "none";
   }
