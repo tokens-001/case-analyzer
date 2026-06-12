@@ -206,6 +206,8 @@
   .card:nth-child(4)::before { background: var(--teal); }
   .card:nth-child(5)::before { background: var(--red); }
   .card:nth-child(6)::before { background: var(--orange); }
+  .card:nth-child(7)::before { background: #db2777; }
+  .card:nth-child(8)::before { background: #0891b2; }
   .card:hover { border-color: #484f58; box-shadow: 0 4px 20px rgba(0,0,0,.25); }
   .card h3 {
     font-size: 13px; font-weight: 700; margin-bottom: 12px;
@@ -219,6 +221,10 @@
   .card:nth-child(5) h3 { color: var(--red); }
   .card:nth-child(6) { border-color: rgba(240,136,62,.25); }
   .card:nth-child(6) h3 { color: var(--orange); }
+  .card:nth-child(7) { border-color: rgba(219,39,119,.25); }
+  .card:nth-child(7) h3 { color: #ec4899; }
+  .card:nth-child(8) { border-color: rgba(8,145,178,.25); }
+  .card:nth-child(8) h3 { color: #06b6d4; }
   .card .content {
     font-size: 13px; color: var(--text-dim);
     white-space: pre-wrap; line-height: 1.85;
@@ -478,6 +484,8 @@
       <div class="card"><h3>🔀 可平移性</h3><div class="content" id="r-transfer">-</div></div>
       <div class="card"><h3>⚔️ 反例检索</h3><div class="content" id="r-counter">-</div></div>
       <div class="card" style="border-color:rgba(248,136,62,.25);"><h3 style="color:var(--orange);">🔗 论证链检测</h3><div class="content" id="r-argchain">-</div></div>
+      <div class="card"><h3>🔎 证据缺失检测</h3><div class="content" id="r-evidence">-</div></div>
+      <div class="card"><h3>⚖️ 相反法条发现</h3><div class="content" id="r-counterlaw">-</div></div>
     </div>
 
     <!-- 综合总结 -->
@@ -687,6 +695,8 @@ function 渲染结果(data) {
   document.getElementById("r-transfer").textContent = a.可平移性 || "";
   document.getElementById("r-counter").textContent = a.反例检索 || "（无）";
   document.getElementById("r-argchain").textContent = a.论证链检测 || "（无）";
+  document.getElementById("r-evidence").textContent = a.证据缺失检测 || "（无）";
+  document.getElementById("r-counterlaw").textContent = a.相反法条发现 || "（无）";
 
   // 综合总结（独立卡片）
   document.getElementById("r-summary").textContent = a.总结 || "";
