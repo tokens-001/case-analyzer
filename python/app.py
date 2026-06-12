@@ -194,24 +194,60 @@ def _存储为JSON_内部(判例名, 分析1, 分析2, 分析3, 分析4, 总结)
     return 文件名
 
 # ---- 8. 每日次数限制 ----
-每日上限 = int(os.environ.get("DAILY_LIMIT", "5"))
+每日上限 = int(os.environ.get("DAILY_LIMIT", "3"))
 
-def 检查次数(uid):
-    """检查今日剩余次数，返回True=可用，False=已用完。每次分析后次数+1"""
+def 获取客户端IP():
+    """获取真实客户端IP，优先取代理转发的头（PythonAnywhere会设X-Forwarded-For）"""
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.remote_addr or "未知IP"
+
+def 剩余次数查询(uid, ip):
+    """仅查询剩余次数，不消耗。返回 {'剩余': int, '上限': int}"""
     今天 = str(date.today())
-    计数文件 = os.path.join(用户数据目录(), f"limit_{今天}.json")
-    if os.path.exists(计数文件):
-        with open(计数文件, "r") as f:
-            计数 = json.load(f)
-    else:
-        计数 = {}
+    用户计数文件 = os.path.join(用户数据目录(), f"limit_{今天}.json")
+    IP计数文件 = os.path.join(数据根目录, f"limit_ip_{今天}.json")
 
-    已用 = 计数.get(uid, 0)
+    def 读计数(路径):
+        if os.path.exists(路径):
+            with open(路径, "r") as f:
+                return json.load(f)
+        return {}
+
+    用户计数 = 读计数(用户计数文件)
+    IP计数 = 读计数(IP计数文件)
+
+    已用 = max(用户计数.get(uid, 0), IP计数.get(ip, 0))
+    return {"剩余": max(0, 每日上限 - 已用), "上限": 每日上限}
+
+def 消耗次数(uid, ip):
+    """消耗一次分析次数（UID+IP双轨记录）。返回True=可用，False=已用完"""
+    今天 = str(date.today())
+    用户计数文件 = os.path.join(用户数据目录(), f"limit_{今天}.json")
+    IP计数文件 = os.path.join(数据根目录, f"limit_ip_{今天}.json")
+    os.makedirs(数据根目录, exist_ok=True)
+
+    def 读计数(路径):
+        if os.path.exists(路径):
+            with open(路径, "r") as f:
+                return json.load(f)
+        return {}
+
+    用户计数 = 读计数(用户计数文件)
+    IP计数 = 读计数(IP计数文件)
+
+    已用 = max(用户计数.get(uid, 0), IP计数.get(ip, 0))
     if 已用 >= 每日上限:
         return False
-    计数[uid] = 已用 + 1
-    with open(计数文件, "w") as f:
-        json.dump(计数, f)
+
+    已用 += 1
+    用户计数[uid] = 已用
+    IP计数[ip] = 已用
+    with open(用户计数文件, "w") as f:
+        json.dump(用户计数, f)
+    with open(IP计数文件, "w") as f:
+        json.dump(IP计数, f)
     return True
 
 # ============================================================
@@ -227,8 +263,10 @@ def 分析路由():
     """接收判例文字，返回完整分析结果（JSON）"""
     # ---- 每日次数限制 ----
     uid = 获取用户ID()
-    if not 检查次数(uid):
-        return jsonify({"error": "今日分析次数已用完，请明天再来。"}), 429
+    ip = 获取客户端IP()
+    if not 消耗次数(uid, ip):
+        剩余 = 剩余次数查询(uid, ip)
+        return jsonify({"error": f"今日分析次数已用完（每人{每日上限}次），请明天再来。", "剩余": 0, "上限": 每日上限}), 429
     api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
         return jsonify({"error": "未设置 DEEPSEEK_API_KEY 环境变量"}), 500
@@ -261,9 +299,13 @@ def 分析路由():
     验证 = 验证分析结果(分析1, 分析2, 分析3, 分析4, 总结)
     存储为JSON(判例名, 分析1, 分析2, 分析3, 分析4, 总结)
 
+    剩余 = 剩余次数查询(uid, ip)
+
     return jsonify({
         "判例名": 判例名,
         "字数": len(判例),
+        "剩余次数": 剩余["剩余"],
+        "今日上限": 剩余["上限"],
         "分析": {
             "核心争议": 分析1,
             "推理链路": 分析2,
@@ -275,6 +317,13 @@ def 分析路由():
         "法条对照": 法条对照,
         "验证": 验证,
     })
+
+@app.route("/remaining")
+def 剩余路由():
+    """返回当前用户+IP的剩余分析次数"""
+    uid = 获取用户ID()
+    ip = 获取客户端IP()
+    return jsonify(剩余次数查询(uid, ip))
 
 @app.route("/history")
 def 历史路由():

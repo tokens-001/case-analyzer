@@ -279,6 +279,7 @@
         <input type="file" id="fileInput" accept=".txt" onchange="读文件(this)">
       </span>
       <button class="btn btn-ghost" onclick="清空()">清空</button>
+      <span id="remaining" style="margin-left:auto; font-size:13px; color:#6b7280;"></span>
     </div>
   </div>
 
@@ -365,6 +366,22 @@
 // 前端交互逻辑
 // ============================================================
 
+// ---- 页面加载：查剩余次数 ----
+async function 刷新剩余次数() {
+  try {
+    const resp = await fetch("/remaining");
+    const data = await resp.json();
+    document.getElementById("remaining").textContent =
+      `今日剩余 ${data.剩余}/${data.上限} 次`;
+    if (data.剩余 === 0) {
+      document.getElementById("remaining").style.color = "#e05d5d";
+    }
+  } catch(e) {
+    document.getElementById("remaining").textContent = "";
+  }
+}
+刷新剩余次数();
+
 // ---- 文件读取 ----
 function 读文件(input) {
   const file = input.files[0];
@@ -429,11 +446,21 @@ function 显示错误(msg) {
   const el = document.getElementById("error");
   el.textContent = msg;
   el.classList.add("active");
+  刷新剩余次数();
 }
 
 // ---- 渲染结果 ----
 function 渲染结果(data) {
   document.getElementById("loading").classList.remove("active");
+
+  // 更新剩余次数
+  if (data.剩余次数 !== undefined) {
+    document.getElementById("remaining").textContent =
+      `今日剩余 ${data.剩余次数}/${data.今日上限} 次`;
+    if (data.剩余次数 === 0) {
+      document.getElementById("remaining").style.color = "#e05d5d";
+    }
+  }
 
   const a = data.分析;
   document.getElementById("r-core").textContent = a.核心争议;
