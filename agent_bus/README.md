@@ -33,3 +33,15 @@ Claude（执行工程师）：写实现 + 写阻塞点
 ## 当前任务
 
 见同目录下 `T001_判例助手v3后续.md`
+
+## GPT 评审流程
+
+Claude 有文件系统权限，GPT 没有。需要你手动桥接一次：
+
+1. Claude 写入评审请求到 `GPT_REVIEW_QUEUE.md`
+2. 你上传 `GPT_REVIEW_QUEUE.md`（或粘贴内容）给 GPT
+3. GPT 写入评审结果到"GPT评审结果"槽位
+4. 你复制回来保存
+5. Claude 下次启动读 session-startup.md → 读 agent_bus/ → 自动看到 GPT 评审
+
+你只动手一次，不需要理解内容。两个 AI 通过共享文件通信。
