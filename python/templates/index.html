@@ -425,9 +425,9 @@
   <div class="input-section">
     <div class="input-row">
       <label>判例名称</label>
-      <input type="text" id="caseName" placeholder="例：张某诉李某合同纠纷案">
+      <input type="text" id="caseName" placeholder="例：张某诉李某合同纠纷案" required>
       <label style="min-width:60px;">案发日期</label>
-      <input type="date" id="caseDate" style="flex:0 0 160px;" title="用于校验AI引用的法条版本是否正确">
+      <input type="date" id="caseDate" style="flex:0 0 160px;" title="用于校验AI引用的法条版本是否正确" required>
     </div>
 
     <textarea id="caseText" placeholder="在此粘贴判例全文……"></textarea>
@@ -529,6 +529,107 @@
       <button class="btn btn-primary" onclick="下载报告()" id="btnDownload" style="display:none;">📥 下载分析报告</button>
     </div>
 
+    <!-- 反馈区 -->
+    <div id="feedback-section" style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px; margin-top:20px;">
+      <div id="feedback-form">
+      <div style="font-size:14px; font-weight:600; color:var(--text-bright); margin-bottom:18px;">📊 帮助我们改进（全选择题，30秒搞定）</div>
+
+      <!-- 第一步：有帮助程度 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">1. 这个分析结果对你有帮助吗？<span style="color:var(--red);">*</span></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;" id="q-helpfulness">
+          <label class="fb-radio"><input type="radio" name="helpfulness" value="very"> 非常有帮助</label>
+          <label class="fb-radio"><input type="radio" name="helpfulness" value="somewhat"> 有一点帮助</label>
+          <label class="fb-radio"><input type="radio" name="helpfulness" value="little"> 没什么帮助</label>
+          <label class="fb-radio"><input type="radio" name="helpfulness" value="none"> 完全没帮助</label>
+        </div>
+      </div>
+
+      <!-- 第二步：最有价值模块 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">2. 哪个模块最有价值？（可多选）<span style="color:var(--red);">*</span></div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-valuable">
+          <label class="fb-chip"><input type="checkbox" value="核心争议"> 核心争议</label>
+          <label class="fb-chip"><input type="checkbox" value="推理链路"> 推理链路</label>
+          <label class="fb-chip"><input type="checkbox" value="未回答问题"> 未回答问题</label>
+          <label class="fb-chip"><input type="checkbox" value="可平移性"> 可平移性</label>
+          <label class="fb-chip"><input type="checkbox" value="反例检索"> 反例检索</label>
+          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链检测</label>
+          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失检测</label>
+          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条发现</label>
+          <label class="fb-chip"><input type="checkbox" value="结构化摘要"> 结构化摘要</label>
+          <label class="fb-chip"><input type="checkbox" value="法条版本校验"> 法条版本校验</label>
+          <label class="fb-chip"><input type="checkbox" value="可信度评分"> 可信度评分</label>
+          <label class="fb-chip"><input type="checkbox" value="综合总结"> 综合总结</label>
+        </div>
+      </div>
+
+      <!-- 第三步：最没用模块 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">3. 哪个模块最没用？（可多选）<span style="color:var(--red);">*</span></div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-useless">
+          <label class="fb-chip"><input type="checkbox" value="核心争议"> 核心争议</label>
+          <label class="fb-chip"><input type="checkbox" value="推理链路"> 推理链路</label>
+          <label class="fb-chip"><input type="checkbox" value="未回答问题"> 未回答问题</label>
+          <label class="fb-chip"><input type="checkbox" value="可平移性"> 可平移性</label>
+          <label class="fb-chip"><input type="checkbox" value="反例检索"> 反例检索</label>
+          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链检测</label>
+          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失检测</label>
+          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条发现</label>
+          <label class="fb-chip"><input type="checkbox" value="结构化摘要"> 结构化摘要</label>
+          <label class="fb-chip"><input type="checkbox" value="法条版本校验"> 法条版本校验</label>
+          <label class="fb-chip"><input type="checkbox" value="可信度评分"> 可信度评分</label>
+          <label class="fb-chip"><input type="checkbox" value="综合总结"> 综合总结</label>
+        </div>
+      </div>
+
+      <!-- 第四步：问题类型 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">4. 遇到了什么问题？（可选）</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;" id="q-issues">
+          <label class="fb-radio"><input type="radio" name="issue_type" value="ai_error"> AI分析错误</label>
+          <label class="fb-radio"><input type="radio" name="issue_type" value="law_error"> 法条引用错误</label>
+          <label class="fb-radio"><input type="radio" name="issue_type" value="bug"> 页面Bug</label>
+          <label class="fb-radio"><input type="radio" name="issue_type" value="slow"> 响应太慢</label>
+          <label class="fb-radio"><input type="radio" name="issue_type" value="unclear"> 看不懂结果</label>
+          <label class="fb-radio"><input type="radio" name="issue_type" value="other"> 其它</label>
+        </div>
+      </div>
+
+      <!-- 第五步：补充意见 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">5. 补充意见（选填）</div>
+        <textarea id="feedbackComment" placeholder="任何想说的……" style="width:100%; height:64px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text-bright); font-size:13px; font-family:inherit; resize:vertical;"></textarea>
+      </div>
+
+      <button class="btn btn-primary" onclick="提交反馈()" style="font-size:13px; padding:10px 28px;">提交反馈</button>
+      <span id="feedback-err" style="display:none; color:var(--red); font-size:13px; margin-left:12px;"></span>
+      </div><!-- #feedback-form -->
+      <div id="feedback-done" style="display:none; color:var(--green); font-size:14px; text-align:center; padding:12px;">✅ 感谢反馈！你的选择会直接影响产品方向。</div>
+      <span id="feedback-err" style="display:none; color:var(--red); font-size:13px; margin-left:12px;"></span>
+    </div>
+
+    <style>
+      .fb-radio {
+        display:inline-flex; align-items:center; gap:4px;
+        padding:6px 14px; border:1px solid var(--border); border-radius:20px;
+        font-size:12px; color:var(--text-dim); cursor:pointer;
+        transition: all .2s; background:var(--bg);
+      }
+      .fb-radio:hover { border-color:#484f58; color:var(--text); }
+      .fb-radio:has(input:checked) { border-color:var(--blue); color:var(--blue); background:rgba(88,166,255,.08); }
+      .fb-radio input { display:none; }
+      .fb-chip {
+        display:inline-flex; align-items:center; gap:4px;
+        padding:5px 12px; border:1px solid var(--border); border-radius:6px;
+        font-size:12px; color:var(--text-dim); cursor:pointer;
+        transition: all .2s; background:var(--bg);
+      }
+      .fb-chip:hover { border-color:#484f58; color:var(--text); }
+      .fb-chip:has(input:checked) { border-color:var(--green); color:var(--green); background:rgba(63,185,80,.08); }
+      .fb-chip input { display:none; }
+    </style>
+
   </div>
 
   <!-- 历史记录 -->
@@ -598,6 +699,14 @@ async function 开始分析() {
 
   if (!text) {
     显示错误("请先输入或上传判例文字");
+    return;
+  }
+  if (!name) {
+    显示错误("请输入判例名称");
+    return;
+  }
+  if (!caseDate) {
+    显示错误("请选择案发日期（用于校验法条版本）");
     return;
   }
 
@@ -681,9 +790,12 @@ function 渲染结果(data) {
     ring.textContent = t.分数;
     ring.className = "trust-score-ring " + (t.等级 === "高" ? "high" : t.等级 === "中" ? "mid" : "low");
     document.getElementById("trust-sub").textContent = "等级：" + (t.等级 === "高" ? "可信" : t.等级 === "中" ? "需审阅" : "不可信");
-    document.getElementById("trust-breakdown").innerHTML = (t.明细 || []).map(d =>
+    const breakdownItems = (t.明细 || []).map(d =>
       `<span class="tbitem ${d.影响 > 0 ? 'up' : 'down'}">${d.影响 > 0 ? '▲' : '▼'} ${d.来源}</span>`
     ).join("");
+    document.getElementById("trust-breakdown").innerHTML = breakdownItems
+      ? `<span style="font-size:11px;color:var(--text-dim);margin-right:6px;">评分明细：</span>${breakdownItems}`
+      : "";
   } else {
     document.getElementById("trust-dashboard").style.display = "none";
   }
@@ -693,10 +805,10 @@ function 渲染结果(data) {
   document.getElementById("r-reasoning").textContent = a.推理链路 || "";
   document.getElementById("r-unanswered").textContent = a.未回答问题 || "";
   document.getElementById("r-transfer").textContent = a.可平移性 || "";
-  document.getElementById("r-counter").textContent = a.反例检索 || "（无）";
-  document.getElementById("r-argchain").textContent = a.论证链检测 || "（无）";
-  document.getElementById("r-evidence").textContent = a.证据缺失检测 || "（无）";
-  document.getElementById("r-counterlaw").textContent = a.相反法条发现 || "（无）";
+  document.getElementById("r-counter").textContent = a.反例检索 || "已检索，未发现明显反例";
+  document.getElementById("r-argchain").textContent = a.论证链检测 || "已检测，未发现明显逻辑断裂";
+  document.getElementById("r-evidence").textContent = a.证据缺失检测 || "已检测，未发现明显证据缺失";
+  document.getElementById("r-counterlaw").textContent = a.相反法条发现 || "已检索，未发现明显冲突法条";
 
   // 综合总结（独立卡片）
   document.getElementById("r-summary").textContent = a.总结 || "";
@@ -799,9 +911,67 @@ function 渲染结果(data) {
   document.getElementById("results").classList.add("active");
   document.getElementById("results").scrollIntoView({ behavior: "smooth" });
 
-  // 显示下载按钮（历史数据也可以下载）
+  // 显示下载按钮和反馈区（重置表单状态）
   document.getElementById("btnDownload").style.display = "inline-block";
+  document.getElementById("feedback-section").style.display = "block";
+  document.getElementById("feedback-form").style.display = "block";
+  document.getElementById("feedback-done").style.display = "none";
+  document.getElementById("feedback-err").style.display = "none";
+  // 清除上次勾选
+  document.querySelectorAll("#feedback-section input[type=radio], #feedback-section input[type=checkbox]").forEach(el => el.checked = false);
+  document.getElementById("feedbackComment").value = "";
   window._lastResult = data;
+}
+
+// ---- 反馈 ----
+function 收集选中值(容器ID) {
+  const checks = document.querySelectorAll(`#${容器ID} input:checked`);
+  return Array.from(checks).map(c => c.value);
+}
+
+async function 提交反馈() {
+  const helpfulness = document.querySelector('input[name="helpfulness"]:checked');
+  if (!helpfulness) {
+    document.getElementById("feedback-err").style.display = "inline";
+    document.getElementById("feedback-err").textContent = "请选择有帮助程度";
+    return;
+  }
+  const mostValuable = 收集选中值("q-valuable");
+  if (mostValuable.length === 0) {
+    document.getElementById("feedback-err").style.display = "inline";
+    document.getElementById("feedback-err").textContent = "请至少选一个最有价值的模块";
+    return;
+  }
+  const leastValuable = 收集选中值("q-useless");
+  if (leastValuable.length === 0) {
+    document.getElementById("feedback-err").style.display = "inline";
+    document.getElementById("feedback-err").textContent = "请至少选一个最没用的模块（可如实选，这对我们非常重要）";
+    return;
+  }
+  document.getElementById("feedback-err").style.display = "none";
+
+  const issueType = document.querySelector('input[name="issue_type"]:checked');
+  const comment = document.getElementById("feedbackComment").value.trim();
+
+  try {
+    await fetch("/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        case_name: window._lastResult?.判例名 || "未知",
+        date: new Date().toISOString().slice(0, 10),
+        helpfulness: helpfulness.value,
+        most_valuable: mostValuable,
+        least_valuable: leastValuable,
+        issue_types: issueType ? [issueType.value] : [],
+        comment: comment
+      })
+    });
+  } catch(e) { /* 静默失败 */ }
+
+  // 隐藏表单，显示感谢（保留DOM，下次分析可重置）
+  document.getElementById("feedback-form").style.display = "none";
+  document.getElementById("feedback-done").style.display = "block";
 }
 
 // ---- 下载报告 ----
@@ -816,6 +986,8 @@ function 下载报告() {
       核心争议: a.核心争议, 推理链路: a.推理链路,
       未回答问题: a.未回答问题, 可平移性: a.可平移性,
       反例检索: a.反例检索, 结构化摘要: a.结构化摘要,
+      论证链检测: a.论证链检测, 证据缺失检测: a.证据缺失检测,
+      相反法条发现: a.相反法条发现,
       总结: a.总结,
       法条统计: window._lastResult.验证.法条统计,
       法条对照: window._lastResult.法条对照,

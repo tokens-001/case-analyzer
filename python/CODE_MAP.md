@@ -4,7 +4,7 @@
 
 ---
 
-## 后端 `app.py` (≈650行)
+## 后端 `app.py` (≈830行)
 
 ```
 app.py
@@ -71,7 +71,7 @@ app.py
 │
 └── 路由 ── URL到函数的映射
     ├── /            → 首页
-    ├── /analyze     → POST 分析主流程（频次→分段→9维并行→校验→图谱→可信度→返回）
+    ├── /analyze     → POST 分析主流程（校验名称+日期→频次→分段→9维并行→校验→图谱→可信度→返回）
     ├── /remaining   → GET 剩余次数
     ├── /history     → GET 历史列表
     ├── /case/<fname>→ GET 单条详情+关联判例
@@ -82,7 +82,8 @@ app.py
 ### 后端数据流（一次分析的完整路径）
 
 ```
-用户粘贴文字+案发日期 → /analyze路由
+用户填写名称+日期+粘贴文字 → /analyze路由
+  → 校验名称+日期(前后端双重必填)
   → 检查次数(UID+IP双轨)
   → 智能分段(判例) → 插入[第X段]编号
   → ThreadPoolExecutor并行4路 → 核心争议/推理链路/未回答问题/可平移性
@@ -101,7 +102,7 @@ app.py
 
 ---
 
-## 前端 `templates/index.html` (≈850行)
+## 前端 `templates/index.html` (≈910行)
 
 ```
 index.html
@@ -131,7 +132,7 @@ index.html
 │   ├── .header → Logo+标题"判例助手"+标语
 │   ├── .input-section
 │   │   ├── #caseName 判例名称
-│   │   ├── #caseDate 案发日期(可选)
+│   │   ├── #caseDate 案发日期(必填)
 │   │   ├── #caseText 判例文字
 │   │   └── .btn-row → 开始分析/从文件读取/清空/#remaining
 │   ├── #loading
@@ -163,7 +164,7 @@ index.html
     ├── 刷新剩余次数() → 页面加载时调/remaining
     ├── 读文件(input) → 上传txt
     ├── 清空()
-    ├── 开始分析() → async发POST含case_date
+    ├── 开始分析() → async发POST含名称+日期+文字(前端校验三者非空)
     ├── 显示错误(msg) + 刷新剩余
     ├── 渲染结果(data) → 九维卡片+仪表盘+相邻法条+折叠区+关联判例
     ├── 下载报告()

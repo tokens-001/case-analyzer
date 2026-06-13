@@ -1,7 +1,7 @@
 # 判例助手 - Web版
 # Flask后端：接收判例 → 调用DeepSeek分析 → 返回结果
 
-import os, json, re, requests, uuid
+import os, json, uuid
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
@@ -9,6 +9,36 @@ from flask import Flask, render_template, request, jsonify, session
 
 # 加载 .env 文件（本地开发用；生产环境直接用系统环境变量）
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+
+# ═══════════════════════════════════════════════════════════
+# 法律技能库导入
+# ═══════════════════════════════════════════════════════════
+from skills.legal import (
+    extract_dispute,
+    extract_reasoning,
+    find_unanswered,
+    assess_transfer,
+    generate_summary,
+    find_counter_arguments,
+    structure_judgment,
+    audit_argument_chain,
+    detect_missing_evidence,
+    discover_opposing_laws,
+)
+from skills.legal.verify_laws import (
+    count_law_citations,
+    search_law_database,
+    verify_law_citation_realness,
+    verify_law_version,
+    find_adjacent_laws,
+)
+from skills.legal.trace_citations import 执行 as trace_citations
+from skills.legal.score_analysis import (
+    validate_analysis_quality,
+    generate_risk_list,
+    compute_trust_score,
+)
+from skills.legal._base import 智能分段
 
 app = Flask(__name__)
 # secret_key: 生产环境从环境变量读，本地开发自动生成
@@ -33,252 +63,13 @@ def 用户数据目录():
     os.makedirs(目录, exist_ok=True)
     return 目录
 
-# ---- 1. 智能分段（AI引用段落号前，先统一拆分方式）----
-def 智能分段(判例):
-    """把判例文字拆成段落。依次尝试空行→单换行→句号拆分"""
-    段落 = [p.strip() for p in 判例.split("\n\n") if p.strip()]
-    if len(段落) >= 3:
-        return 段落
-    段落 = [p.strip() for p in 判例.split("\n") if p.strip()]
-    if len(段落) >= 3:
-        return 段落
-    raw = re.split(r'(?<=[。！？])', 判例)
-    段落 = [p.strip() for p in raw if p.strip() and len(p.strip()) > 5]
-    if len(段落) >= 2:
-        return 段落
-    return [判例]
+# 智能分段 → 已迁移到 skills/legal/_base.py
 
-# ---- 2. API调用 ----
-def 问AI(问题, 判例, api_key):
-    """发送请求前，先把判例文字加上段落编号，保证AI引用和代码拆分一致"""
-    段落列表 = 智能分段(判例)
-    编号段落 = "\n\n".join(f"[第{i+1}段] {p}" for i, p in enumerate(段落列表))
-    try:
-        response = requests.post(
-            url="https://api.deepseek.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "model": "deepseek-chat",
-                "messages": [{"role": "user", "content": f"{问题}\n判例文字:\n{编号段落}"}],
-            },
-            timeout=120
-        )
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
-    except Exception as e:
-        return f"【错误】API请求失败: {str(e)}"
+# 问AI → 已迁移到 skills/legal/_base.py
 
-# ---- 3. 四个分析维度 ----
-法条提示 = "【硬性要求】必须引用本案应适用的具体法律条文，写明'《XX法》第X条'或'XX法第X条'，至少引用2条。不引用法律条文的分析视为不合格。"
+# 九个分析维度函数 → 已迁移到 skills/legal/ 对应模块
+# 溯源对比/法条统计/法条库查询 → 已迁移到 skills/legal/verify_laws.py + trace_citations.py
 
-def 核心争议(判例, api_key):
-    提示 = f"请分析以下判例的核心争议是什么？每个结论后标注(见原文第X段)。{法条提示}"
-    return 问AI(提示, 判例, api_key)
-
-def 推理链路(判例, api_key):
-    提示 = f"根据上述判例，法院的推理链路是什么？每个结论后标注(见原文第X段)。{法条提示}"
-    return 问AI(提示, 判例, api_key)
-
-def 未回答问题(判例, api_key):
-    提示 = f"这份判例的法院判决中，还有哪些法律问题未被回答？每个结论后标注(见原文第X段)。{法条提示}"
-    return 问AI(提示, 判例, api_key)
-
-def 可平移性(判例, api_key):
-    提示 = f"这份判例的分析框架可以平移到哪些法律领域？每个结论后标注(见原文第X段)。{法条提示}"
-    return 问AI(提示, 判例, api_key)
-
-def 案例总结(判例, 分析1, 分析2, 分析3, 分析4, api_key):
-    总结问题 = f"""请将以下判例和四段分析整合成一段完整总结。
-要求:只输出一段文字(不超过300字),不要分点列出,不要给每段单独总结。
-
-判例：{判例}
-
-核心争议分析：{分析1}
-
-推理链路分析：{分析2}
-
-未回答问题分析：{分析3}
-
-可平移性分析：{分析4}
-
-整合成一段完整总结，涵盖：案件性质、核心裁判逻辑、法律意义。不要分点，不要编号。"""
-    return 问AI(总结问题, 判例, api_key)
-
-def 反例检索(判例, api_key):
-    提示 = f"""【硬性要求】请找出本案裁判逻辑中可能存在的相反观点、反对判例倾向、以及论证薄弱环节。
-从以下角度分析：
-1. 是否存在与本案结论相反的司法观点或判例趋势？
-2. 法院的推理链路中，哪个环节最容易被上诉方攻击？
-3. 如果对方律师要反驳本案判决，最有力的三个论点是什么？
-每个结论后标注(见原文第X段)。{法条提示}"""
-    return 问AI(提示, 判例, api_key)
-
-def 结构化摘要(判例, 分析1, 分析2, 分析3, 分析4, api_key):
-    提示 = f"""请将以下判例按四段式结构化输出：
-【事实认定】案件的基本事实要素（当事人、时间、地点、行为、损害结果）
-【争议焦点】双方各自的主张和核心分歧点
-【裁判理由】法院的推理逻辑、适用法条、证据采信
-【裁判结果】判决结论、赔偿金额、责任分配
-
-判例：{判例}
-核心争议：{分析1}
-推理链路：{分析2}
-未回答问题：{分析3}
-可平移性：{分析4}
-
-每段不超过200字。用【事实认定】【争议焦点】【裁判理由】【裁判结果】作为标题。"""
-    return 问AI(提示, 判例, api_key)
-
-def 论证链检测(判例, api_key):
-    提示 = f"""【硬性要求】请检测本案法院论证链中是否存在逻辑断裂。
-请逐项分析：
-1. 事实→法条的映射：法院认定的事实，与引用的法律条文之间，是否存在跳跃？事实是否完全满足法条的构成要件？
-2. 法条→结论的映射：从法条推到判决结论，中间是否缺少了关键的证明步骤？
-3. 未证明的前提：结论依赖但判决中未充分证明的前提假设是什么？
-4. 替代论证路径：如果上述链条存在断裂，是否存在其他可适用的法条或论证路径可以弥补？
-每个结论后标注(见原文第X段)。{法条提示}"""
-    return 问AI(提示, 判例, api_key)
-
-def 证据缺失检测(判例, api_key):
-    提示 = f"""【硬性要求】请分析：要证明本案的结论，判决中缺少哪些关键证据？
-从以下角度：
-1. 法院认定的事实中，哪些缺乏直接证据支持？
-2. 如果一方要上诉或反驳，对方最难举证的环节是什么？
-3. 判决依赖但未出现在判决书中的证据类型是什么？（如书面合同、鉴定报告、证人证言等）
-4. 本案若重新审理，补充哪些证据最可能改变判决结果？
-每个结论后标注(见原文第X段)。{法条提示}"""
-    return 问AI(提示, 判例, api_key)
-
-def 相反法条发现(判例, api_key):
-    提示 = f"""【硬性要求】请找出可能限制、抵消或反对本案所适用的法律条文的其他法律条文。
-从以下角度分析：
-1. 是否存在与本案适用法条构成要件相冲突的其他条文？
-2. 是否存在可以限制本案法条适用范围的上位法或特别法？
-3. 是否存在可能导致不同裁判结果的竞合法条？
-4. 如果对方律师要挑战本案的法律适用，最可能援引哪些法条？
-每个结论后标注具体法律条文名称和条款号。{法条提示}"""
-    return 问AI(提示, 判例, api_key)
-
-# ---- 4. 溯源对比（返回结构化数据而非打印）----
-def 溯源对比(判例, *分析列表):
-    段落列表 = 智能分段(判例)
-    总段落数 = len(段落列表)
-
-    引用集合 = set()
-    for 分析 in 分析列表:
-        引用列表 = re.findall(r'见原文第(\d+)段', 分析)
-        for 号 in 引用列表:
-            引用集合.add(int(号))
-
-    if not 引用集合:
-        return {"warning": "AI未标注任何原文引用", "items": [], "total_paras": 总段落数}
-
-    items = []
-    for 段号 in sorted(引用集合):
-        if 1 <= 段号 <= 总段落数:
-            items.append({"段号": 段号, "内容": 段落列表[段号 - 1][:200], "有效": True})
-        else:
-            items.append({"段号": 段号, "内容": f"⚠️ 段落号{段号}超出原文范围（共{总段落数}段），AI可能编造引用", "有效": False})
-
-    return {"引用数": len(引用集合), "总段落数": 总段落数, "items": items}
-
-# ---- 5. 法条统计 ----
-def 法条统计(分析文字):
-    # 通用模式：《XX法》第X条 / XX法第X条 / 民法典第X条（含书名号或无书名号）
-    法条列表 = re.findall(
-        r'(?:《[^》]{2,20}》|[^\s，。；]{2,10}法)\s*第\s*\d+\s*(?:条(?:\s*之\s*[一二三四五六七八九十]+)?)?',
-        分析文字
-    )
-    法条集合 = list(set(法条列表))
-    if 法条集合:
-        return f"引用法条 {len(法条集合)} 条：" + "、".join(法条集合[:5])
-    return "未引用法律条文"
-
-# ---- 6. 法条库查询（返回结构化数据）----
-def 解析法条元数据(文件路径):
-    """从法条文件中提取元数据（#META...#END 块）。返回字典或空字典"""
-    try:
-        with open(文件路径, "r") as f:
-            内容 = f.read()
-        元数据匹配 = re.search(r'#META\n(.*?)\n#END', 内容, re.DOTALL)
-        if not 元数据匹配:
-            return {}
-        元数据 = {}
-        for 行 in 元数据匹配.group(1).split("\n"):
-            if ":" in 行:
-                键, 值 = 行.split(":", 1)
-                元数据[键.strip()] = 值.strip()
-        return 元数据
-    except:
-        return {}
-
-def 法条库查询(*分析列表):
-    if not os.path.exists(法条库目录):
-        return []
-
-    合并分析文字 = " ".join(分析列表)
-    法条引用列表 = re.findall(
-        r'(?:《[^》]{2,20}》|[^\s，。；]{2,10}法)\s*第\s*\d+\s*(?:条(?:\s*之\s*[一二三四五六七八九十]+)?)?',
-        合并分析文字
-    )
-    查找列表 = list(set(法条引用列表))
-
-    结果列表 = []
-    法条文件列表 = os.listdir(法条库目录)
-    for 引用 in 查找列表[:5]:
-        法名匹配 = re.search(r'《?([^》\s]{2,20}?法)》?', 引用)
-        if not 法名匹配:
-            if '民法典' in 引用:
-                法名 = '民法典'
-            else:
-                continue
-        else:
-            法名 = 法名匹配.group(1)
-        for 法条文件 in 法条文件列表:
-            if 法名 in 法条文件:
-                try:
-                    文件路径 = os.path.join(法条库目录, 法条文件)
-                    with open(文件路径, "r") as f:
-                        全文 = f.read()
-                    元数据 = 解析法条元数据(文件路径)
-                    条文号匹配 = re.search(r'(第\s*\d+\s*条)', 引用)
-                    if 条文号匹配:
-                        条文标记 = 条文号匹配.group(1)
-                        位置 = 全文.find(条文标记)
-                        if 位置 >= 0:
-                            开始 = max(0, 位置)
-                            结束 = min(len(全文), 位置 + 300)
-                            结果列表.append({
-                                "引用": 引用,
-                                "法名": 法名,
-                                "条文": 全文[开始:结束].strip() + "……",
-                                "状态": 元数据.get("状态", "未知"),
-                                "施行日期": 元数据.get("施行日期", ""),
-                                "取代": 元数据.get("取代", ""),
-                            })
-                except:
-                    pass
-    # ---- 记录缺失法条：AI引用过但法条库里没有的，写到missing文件方便以后补 ----
-    已找到引用 = {item["引用"] for item in 结果列表}
-    缺失引用 = [r for r in 查找列表[:5] if r not in 已找到引用]
-    if 缺失引用:
-        缺失日志 = os.path.join(法条库目录, "missing_laws.txt")
-        try:
-            已有 = set()
-            if os.path.exists(缺失日志):
-                with open(缺失日志, "r") as f:
-                    for line in f:
-                        已有.add(line.strip())
-            新增 = [r for r in 缺失引用 if r not in 已有]
-            if 新增:
-                with open(缺失日志, "a") as f:
-                    for r in 新增:
-                        f.write(f"{date.today()}\t{r}\n")
-        except:
-            pass
-    return 结果列表
-
-# ---- 6b. 判例关联图谱（基于法条引用同现）----
 def 构建判例索引():
     """扫描全部已存判例JSON，返回 {法条引用: [判例列表]} 的映射"""
     索引 = {}
@@ -356,146 +147,9 @@ def 查关联判例(判例文件名):
     结果 = sorted(关联集合.values(), key=lambda x: len(x["共同法条"]), reverse=True)
     return 结果[:10]
 
-# ---- 6c. 法条版本时间轴校验 ----
-def 校验法条版本(案发日期, 法条条目):
-    """比对案发时间与法条版本，如案发于修订前但引用修订后条文，返回警告"""
-    施行日期 = 法条条目.get("施行日期", "")
-    状态 = 法条条目.get("状态", "")
-    if not 施行日期:
-        return None
-    try:
-        案发 = date.fromisoformat(案发日期)
-        施行 = date.fromisoformat(施行日期)
-        if 案发 < 施行:
-            return f"⚠️ 案发时间({案发日期})早于本法条施行日期({施行日期})，可能适用旧法"
-    except:
-        pass
-    if 状态 == "已废止":
-        return f"⚠️ 本法条已废止，请核实是否仍可援引"
-    if 状态 == "已修订":
-        return f"⚠️ 本法条已修订，请核实案发时适用的版本"
-    return None
+# 法条版本校验/风险列表/可信度评分 → 已迁移到 skills/legal/verify_laws.py + score_analysis.py
 
-def 生成风险列表(验证, 法条对照, 溯源):
-    """汇总所有风险项，前端优先展示"""
-    风险 = []
-    # 验证层风险
-    for 问题 in 验证.get("问题", []):
-        风险.append({"等级": "warning", "内容": 问题})
-    # 法条版本风险
-    if 法条对照:
-        for item in 法条对照:
-            if item.get("版本警告"):
-                风险.append({"等级": "danger", "内容": item["版本警告"]})
-    # 溯源越界风险
-    if 溯源 and 溯源.get("items"):
-        for item in 溯源["items"]:
-            if not item.get("有效"):
-                风险.append({"等级": "danger", "内容": f"AI编造引用：原文第{item['段号']}段不存在（共{溯源['总段落数']}段）"})
-    return 风险
-
-def 相邻法条发现(法条对照):
-    """扫描法条库，找到AI引用法条附近的相关条文（前2条+后2条）"""
-    if not 法条对照 or not os.path.exists(法条库目录):
-        return []
-    相关列表 = []
-    for item in 法条对照:
-        引用 = item.get("引用", "")
-        条文号匹配 = re.search(r'第\s*(\d+)\s*条', 引用)
-        if not 条文号匹配:
-            continue
-        当前号 = int(条文号匹配.group(1))
-        法名 = item.get("法名", "")
-        for 法条文件 in os.listdir(法条库目录):
-            if 法名 not in 法条文件:
-                continue
-            try:
-                with open(os.path.join(法条库目录, 法条文件), "r") as f:
-                    全文 = f.read()
-                for 偏移 in [-2, -1, 1, 2]:
-                    相邻号 = 当前号 + 偏移
-                    if 相邻号 < 1:
-                        continue
-                    标记 = f"第{相邻号}条"
-                    位置 = 全文.find(标记)
-                    if 位置 >= 0:
-                        结束 = min(len(全文), 位置 + 120)
-                        相关列表.append({
-                            "引用法条": 引用,
-                            "相邻条文": 标记,
-                            "内容": 全文[位置:结束].strip().replace("\n", " ")[:100] + "……",
-                            "关系": "前条" if 偏移 < 0 else "后条"
-                        })
-            except:
-                pass
-    # 去重
-    已见 = set()
-    去重 = []
-    for r in 相关列表:
-        key = r["相邻条文"]
-        if key not in 已见:
-            已见.add(key)
-            去重.append(r)
-    return 去重[:8]
-
-def 计算可信度(验证, 法条对照, 溯源):
-    """综合计算分析可信度分数（0-100）并拆解来源"""
-    基础分 = 70
-    明细 = []
-    # 法条版本校验
-    if 法条对照:
-        版本警告数 = sum(1 for item in 法条对照 if item.get("版本警告"))
-        if 版本警告数 == 0:
-            基础分 += 15
-            明细.append({"来源": "法条版本一致", "影响": +15})
-        else:
-            扣分 = min(版本警告数 * 10, 20)
-            基础分 -= 扣分
-            明细.append({"来源": f"法条版本不匹配({版本警告数}条)", "影响": -扣分})
-        # 法条有库中对照
-        有效法条数 = sum(1 for item in 法条对照 if item.get("状态") == "现行有效")
-        if 有效法条数 > 0:
-            基础分 += 5
-            明细.append({"来源": f"法条现行有效({有效法条数}条)", "影响": +5})
-    else:
-        基础分 -= 10
-        明细.append({"来源": "无法条库对照", "影响": -10})
-    # 溯源校验
-    if 溯源 and 溯源.get("items"):
-        越界数 = sum(1 for item in 溯源["items"] if not item.get("有效"))
-        if 越界数 == 0 and 溯源.get("引用数", 0) > 0:
-            基础分 += 10
-            明细.append({"来源": "溯源全部验证", "影响": +10})
-        elif 越界数 > 0:
-            扣分 = min(越界数 * 5, 15)
-            基础分 -= 扣分
-            明细.append({"来源": f"溯源越界({越界数}处)", "影响": -扣分})
-    # 验证层
-    if 验证.get("通过"):
-        基础分 += 5
-        明细.append({"来源": "质量验证通过", "影响": +5})
-    else:
-        扣分 = len(验证.get("问题", [])) * 5
-        基础分 -= 扣分
-        明细.append({"来源": f"质量问题({len(验证.get('问题',[]))}项)", "影响": -扣分})
-    # 限制范围
-    基础分 = max(0, min(100, 基础分))
-    return {"分数": 基础分, "等级": "高" if 基础分 >= 75 else "中" if 基础分 >= 50 else "低", "明细": 明细}
-
-# ---- 7. 验证 ----
-def 验证分析结果(分析1, 分析2, 分析3, 分析4, 总结):
-    问题列表 = []
-    if len(分析1) < 20: 问题列表.append("核心争议字数过少，可能API异常")
-    if len(分析2) < 20: 问题列表.append("推理链路字数过少，可能API异常")
-    if len(分析3) < 20: 问题列表.append("未回答问题字数过少，可能API异常")
-    if len(分析4) < 20: 问题列表.append("可平移性字数过少，可能API异常")
-    if len(总结) < 50: 问题列表.append("总结字数过少")
-
-    法条结果 = 法条统计(分析1 + 分析2 + 分析3 + 分析4)
-    if 法条结果 == "未引用法律条文":
-        问题列表.append("四段分析均未引用法律条文")
-
-    return {"通过": len(问题列表) == 0, "问题": 问题列表, "法条统计": 法条结果}
+# 验证分析结果 → 已迁移到 skills/legal/score_analysis.py
 
 # ---- 8. 存储 ----
 def 存储为JSON(判例名, 分析1, 分析2, 分析3, 分析4, 反例, 总结, 结构, 论证链, 证据缺失, 相反法条):
@@ -584,8 +238,8 @@ def 首页():
 
 @app.route("/analyze", methods=["POST"])
 def 分析路由():
-    """接收判例文字，返回完整分析结果（JSON）"""
-    # ---- 每日次数限制 ----
+    """编排层：按顺序调度技能库中的分析技能，组装JSON返回"""
+    # ── 限流 & 校验 ──
     uid = 获取用户ID()
     ip = 获取客户端IP()
     if not 消耗次数(uid, ip):
@@ -596,59 +250,68 @@ def 分析路由():
         return jsonify({"error": "未设置 DEEPSEEK_API_KEY 环境变量"}), 500
 
     data = request.json
-    判例名 = data.get("name", "").strip() or "未命名判例"
+    判例名 = data.get("name", "").strip()
     判例 = data.get("text", "").strip()
+    案发日期 = data.get("case_date", "").strip()
 
+    if not 判例名:
+        return jsonify({"error": "请输入判例名称"}), 400
+    if len(判例名) > 80:
+        return jsonify({"error": "判例名称过长（最多80字）"}), 400
+    if not 案发日期:
+        return jsonify({"error": "请选择案发日期（用于校验法条版本）"}), 400
     if len(判例) < 50:
         return jsonify({"error": "判例文字太短（少于50字），请输入完整判例内容"}), 400
 
-    # ---- 并行跑四个分析（ThreadPoolExecutor）----
+    # ── 第一轮：四维基础分析（并行）──
     with ThreadPoolExecutor(max_workers=4) as executor:
-        future_1 = executor.submit(核心争议, 判例, api_key)
-        future_2 = executor.submit(推理链路, 判例, api_key)
-        future_3 = executor.submit(未回答问题, 判例, api_key)
-        future_4 = executor.submit(可平移性, 判例, api_key)
+        f1 = executor.submit(extract_dispute.执行, 判例, api_key)
+        f2 = executor.submit(extract_reasoning.执行, 判例, api_key)
+        f3 = executor.submit(find_unanswered.执行, 判例, api_key)
+        f4 = executor.submit(assess_transfer.执行, 判例, api_key)
+        分析1 = f1.result()
+        分析2 = f2.result()
+        分析3 = f3.result()
+        分析4 = f4.result()
 
-        分析1 = future_1.result()
-        分析2 = future_2.result()
-        分析3 = future_3.result()
-        分析4 = future_4.result()
+    # ── 第二轮：综合总结（依赖第一轮）──
+    总结 = generate_summary.执行(判例, 分析1, 分析2, 分析3, 分析4, api_key)
 
-    # 总结依赖前面四个结果，不能并行
-    总结 = 案例总结(判例, 分析1, 分析2, 分析3, 分析4, api_key)
-
-    # 反例检索 + 结构化摘要 + 论证链检测 + 证据缺失 + 相反法条 并行跑
+    # ── 第三轮：深度五维（并行）──
     with ThreadPoolExecutor(max_workers=5) as executor:
-        future_反例 = executor.submit(反例检索, 判例, api_key)
-        future_结构 = executor.submit(结构化摘要, 判例, 分析1, 分析2, 分析3, 分析4, api_key)
-        future_论证 = executor.submit(论证链检测, 判例, api_key)
-        future_证据 = executor.submit(证据缺失检测, 判例, api_key)
-        future_相反 = executor.submit(相反法条发现, 判例, api_key)
-        反例 = future_反例.result()
-        结构 = future_结构.result()
-        论证链 = future_论证.result()
-        证据缺失 = future_证据.result()
-        相反法条 = future_相反.result()
+        f5 = executor.submit(find_counter_arguments.执行, 判例, api_key)
+        f6 = executor.submit(structure_judgment.执行, 判例, 分析1, 分析2, 分析3, 分析4, api_key)
+        f7 = executor.submit(audit_argument_chain.执行, 判例, api_key)
+        f8 = executor.submit(detect_missing_evidence.执行, 判例, api_key)
+        f9 = executor.submit(discover_opposing_laws.执行, 判例, api_key)
+        反例 = f5.result()
+        结构 = f6.result()
+        论证链 = f7.result()
+        证据缺失 = f8.result()
+        相反法条 = f9.result()
 
-    # 案发日期：用于法条版本时间轴校验
-    案发日期 = data.get("case_date", "").strip()
+    # ── 第四轮：本地校验层（不调API，全部并行）──
+    全部分析 = [分析1, 分析2, 分析3, 分析4, 反例, 论证链, 证据缺失, 相反法条]
+    溯源 = trace_citations(判例, *全部分析)
+    法条对照 = search_law_database(法条库目录, *全部分析)
+    法条真实性警告 = verify_law_citation_realness(法条库目录, *全部分析)
+    验证 = validate_analysis_quality(分析1, 分析2, 分析3, 分析4, 总结, count_law_citations)
 
-    # 溯源、法条、验证、存储
-    溯源 = 溯源对比(判例, 分析1, 分析2, 分析3, 分析4, 反例, 论证链, 证据缺失, 相反法条)
-    法条对照 = 法条库查询(分析1, 分析2, 分析3, 分析4, 反例, 论证链, 证据缺失, 相反法条)
-    验证 = 验证分析结果(分析1, 分析2, 分析3, 分析4, 总结)
+    # ── 存储 ──
     存储为JSON(判例名, 分析1, 分析2, 分析3, 分析4, 反例, 总结, 结构, 论证链, 证据缺失, 相反法条)
 
-    剩余 = 剩余次数查询(uid, ip)
-    相邻法条 = 相邻法条发现(法条对照)
-    可信度 = 计算可信度(验证, 法条对照, 溯源)
-
-    # 法条版本时间轴校验
+    # ── 法条版本时间轴校验 ──
     if 案发日期 and 法条对照:
         for item in 法条对照:
-            版本问题 = 校验法条版本(案发日期, item)
+            版本问题 = verify_law_version(案发日期, item)
             if 版本问题:
                 item["版本警告"] = 版本问题
+
+    # ── 组装返回 ──
+    剩余 = 剩余次数查询(uid, ip)
+    相邻法条 = find_adjacent_laws(法条库目录, 法条对照)
+    可信度 = compute_trust_score(验证, 法条对照, 溯源, 法条真实性警告)
+    风险列表 = generate_risk_list(验证, 法条对照, 溯源, 法条真实性警告)
 
     return jsonify({
         "判例名": 判例名,
@@ -672,7 +335,8 @@ def 分析路由():
         "相邻法条": 相邻法条,
         "验证": 验证,
         "可信度": 可信度,
-        "风险列表": 生成风险列表(验证, 法条对照, 溯源),
+        "风险列表": 风险列表,
+        "法条真实性警告": 法条真实性警告,
     })
 
 @app.route("/remaining")
@@ -786,19 +450,31 @@ def 下载路由():
 {'─'*40}
 {data.get('结构化摘要', '')}
 
-八、法条统计
-{'─'*40}
+	八、论证链检测
+	{'─'*40}
+{data.get('论证链检测', '')}
+
+	九、证据缺失检测
+	{'─'*40}
+{data.get('证据缺失检测', '')}
+
+	十、相反法条发现
+	{'─'*40}
+{data.get('相反法条发现', '')}
+
+	十一、法条统计
+	{'─'*40}
 {data.get('法条统计', '')}
 
-九、法条对照
-{'─'*40}
+	十二、法条对照
+	{'─'*40}
 """
     for 条目 in data.get('法条对照', []):
         报告 += f"\n【{条目.get('法名', '')}】{条目.get('引用', '')}\n{条目.get('条文', '')}\n"
 
     报告 += f"""
-十、溯源对比
-{'─'*40}
+	十三、溯源对比
+	{'─'*40}
 """
     for item in data.get('溯源', {}).get('items', []):
         mark = "" if item.get('有效') else "⚠️ "
@@ -815,6 +491,41 @@ def 下载路由():
         mimetype="text/plain; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename={data.get('判例名', 'report')}_分析报告.txt"}
     )
+
+@app.route("/feedback", methods=["POST"])
+def 反馈路由():
+    """接收结构化反馈：有帮助程度 + 最有/最没用模块 + 问题类型 + 可选文字"""
+    data = request.json
+    判例名 = data.get("case_name", "未知")
+    分析日期 = data.get("date", str(date.today()))
+    有帮助程度 = data.get("helpfulness", "")
+    最有价值 = data.get("most_valuable", [])
+    最没用 = data.get("least_valuable", [])
+    问题类型 = data.get("issue_types", [])
+    备注 = data.get("comment", "").strip()
+
+    if 有帮助程度 not in ("very", "somewhat", "little", "none"):
+        return jsonify({"error": "请选择有帮助程度"}), 400
+
+    反馈数据 = {
+        "判例名": 判例名,
+        "分析日期": 分析日期,
+        "有帮助程度": 有帮助程度,
+        "最有价值模块": 最有价值,
+        "最没用模块": 最没用,
+        "问题类型": 问题类型,
+        "备注": 备注,
+        "提交时间": str(date.today()),
+    }
+
+    反馈目录 = os.path.join(用户数据目录(), "feedback")
+    os.makedirs(反馈目录, exist_ok=True)
+    文件名 = f"{date.today()}_{判例名}_反馈.json"
+    with open(os.path.join(反馈目录, 文件名), "w") as f:
+        json.dump(反馈数据, f, ensure_ascii=False)
+
+    return jsonify({"ok": True, "message": "感谢反馈！"})
+
 
 if __name__ == "__main__":
     print("判例助手网页版已启动 → http://127.0.0.1:5050")
