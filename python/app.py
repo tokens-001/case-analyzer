@@ -494,13 +494,14 @@ def 下载路由():
 
 @app.route("/feedback", methods=["POST"])
 def 反馈路由():
-    """接收结构化反馈：有帮助程度 + 最有/最没用模块 + 问题类型 + 可选文字"""
+    """接收结构化反馈：有帮助程度 + 最有/最没用模块 + 必须保留模块 + 问题类型 + 可选文字"""
     data = request.json
     判例名 = data.get("case_name", "未知")
     分析日期 = data.get("date", str(date.today()))
     有帮助程度 = data.get("helpfulness", "")
     最有价值 = data.get("most_valuable", [])
     最没用 = data.get("least_valuable", [])
+    必须保留 = data.get("keep_three", [])
     问题类型 = data.get("issue_types", [])
     备注 = data.get("comment", "").strip()
 
@@ -513,6 +514,7 @@ def 反馈路由():
         "有帮助程度": 有帮助程度,
         "最有价值模块": 最有价值,
         "最没用模块": 最没用,
+        "必须保留模块": 必须保留,
         "问题类型": 问题类型,
         "备注": 备注,
         "提交时间": str(date.today()),

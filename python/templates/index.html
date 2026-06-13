@@ -583,9 +583,28 @@
         </div>
       </div>
 
-      <!-- 第四步：问题类型 -->
+      <!-- 第四步：如果只能保留3个模块 -->
       <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">4. 遇到了什么问题？（可选）</div>
+        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">4. 如果只能保留3个模块，你会留下哪些？（选1-3个）<span style="color:var(--red);">*</span></div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-keep">
+          <label class="fb-chip"><input type="checkbox" value="核心争议"> 核心争议</label>
+          <label class="fb-chip"><input type="checkbox" value="推理链路"> 推理链路</label>
+          <label class="fb-chip"><input type="checkbox" value="未回答问题"> 未回答问题</label>
+          <label class="fb-chip"><input type="checkbox" value="可平移性"> 可平移性</label>
+          <label class="fb-chip"><input type="checkbox" value="反例检索"> 反例检索</label>
+          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链检测</label>
+          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失检测</label>
+          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条发现</label>
+          <label class="fb-chip"><input type="checkbox" value="结构化摘要"> 结构化摘要</label>
+          <label class="fb-chip"><input type="checkbox" value="法条版本校验"> 法条版本校验</label>
+          <label class="fb-chip"><input type="checkbox" value="可信度评分"> 可信度评分</label>
+          <label class="fb-chip"><input type="checkbox" value="综合总结"> 综合总结</label>
+        </div>
+      </div>
+
+      <!-- 第五步：问题类型 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">5. 遇到了什么问题？（可选）</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;" id="q-issues">
           <label class="fb-radio"><input type="radio" name="issue_type" value="ai_error"> AI分析错误</label>
           <label class="fb-radio"><input type="radio" name="issue_type" value="law_error"> 法条引用错误</label>
@@ -596,9 +615,9 @@
         </div>
       </div>
 
-      <!-- 第五步：补充意见 -->
+      <!-- 第六步：补充意见 -->
       <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">5. 补充意见（选填）</div>
+        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">6. 补充意见（选填）</div>
         <textarea id="feedbackComment" placeholder="任何想说的……" style="width:100%; height:64px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text-bright); font-size:13px; font-family:inherit; resize:vertical;"></textarea>
       </div>
 
@@ -948,6 +967,12 @@ async function 提交反馈() {
     document.getElementById("feedback-err").textContent = "请至少选一个最没用的模块（可如实选，这对我们非常重要）";
     return;
   }
+  const keepThree = 收集选中值("q-keep");
+  if (keepThree.length === 0 || keepThree.length > 3) {
+    document.getElementById("feedback-err").style.display = "inline";
+    document.getElementById("feedback-err").textContent = "请选择1-3个你不能失去的模块";
+    return;
+  }
   document.getElementById("feedback-err").style.display = "none";
 
   const issueType = document.querySelector('input[name="issue_type"]:checked');
@@ -963,6 +988,7 @@ async function 提交反馈() {
         helpfulness: helpfulness.value,
         most_valuable: mostValuable,
         least_valuable: leastValuable,
+        keep_three: keepThree,
         issue_types: issueType ? [issueType.value] : [],
         comment: comment
       })
