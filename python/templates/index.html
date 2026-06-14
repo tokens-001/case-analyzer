@@ -68,10 +68,9 @@
   }
   .features-title { font-size: 11px; font-weight: 700; color: var(--navy); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
   .features-list { display: flex; gap: 8px; flex-wrap: wrap; }
-  .features-list span {
-    font-size: 11px; color: var(--navy); font-weight: 600;
-    background: rgba(30,58,95,.08); padding: 3px 10px; border-radius: 3px;
-  }
+  .features-list { display: flex; gap: 6px; flex-wrap: wrap; }
+  .features-list span { font-size: 12px; color: var(--navy); font-weight: 500; }
+  .features-list span::before { content: none; }
 
 
   .main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
@@ -319,7 +318,7 @@
     <div class="header-logo">⚖️</div>
     <div class="header-text">
       <h1>判例助手<span style="font-size:11px;color:var(--amber);font-weight:400;">（测试版）</span></h1>
-      <div class="tagline" id="tagline">AI驱动的判例分析 · 溯源校验 + 法条版本核对</div>
+      <div class="tagline" id="tagline">8维法院推理拆解：不是总结判决书，是还原裁判逻辑</div>
     </div>
   </div>
   <div class="mode-switch">
@@ -341,15 +340,15 @@
     <div class="features" id="features-judgment">
       <div class="features-title">分析框架（8维）</div>
       <div class="features-list">
-        <span>结构化摘要</span><span>核心争议</span><span>推理链路</span><span>法条适用精析</span>
-        <span>对立解释路径</span><span>论证完整性检查</span><span>程序问题识别</span><span>未回答问题</span>
+        <span>① 结构化摘要</span><span>② 核心争议</span><span>③ 推理链路</span><span>④ 法条适用精析</span>
+        <span>⑤ 对立解释路径</span><span>⑥ 论证完整性检查</span><span>⑦ 程序问题识别</span><span>⑧ 未回答问题</span>
       </div>
     </div>
     <div class="features" id="features-case" style="display:none">
       <div class="features-title">分析框架（5维）</div>
       <div class="features-list">
-        <span>法律关系识别</span><span>事实与证据评估</span><span>对抗路径分析</span>
-        <span>风险推演</span><span>行动建议</span>
+        <span>① 法律关系识别</span><span>② 事实与证据评估</span><span>③ 对抗路径分析</span>
+        <span>④ 风险推演</span><span>⑤ 行动建议</span>
       </div>
     </div>
     <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">支持判决书、裁定书、仲裁裁决 | 建议500字以上</div>
@@ -547,8 +546,8 @@ function 切换模式(mode) {
   document.getElementById('mode-judgment').classList.toggle('active', mode === 'judgment');
   document.getElementById('mode-case').classList.toggle('active', mode === 'case');
   const taglines = {
-    judgment: '法院视角 · 结构化摘要 → 法条精析 → 对立路径 → 程序审查',
-    case: '律师视角 · 法律关系 → 证据评估 → 对抗分析 → 风险推演'
+    judgment: '8维法院推理拆解：不是总结判决书，是还原裁判逻辑',
+    case: '5维律师对抗分析：不是给法律建议，是预演诉讼路径'
   };
   document.getElementById('tagline').textContent = taglines[mode];
   document.getElementById('features-judgment').style.display = mode === 'case' ? 'none' : 'flex';
