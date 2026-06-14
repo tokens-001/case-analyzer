@@ -82,7 +82,7 @@
   .input-row { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
   .input-row label { font-size: 13px; color: var(--text); white-space: nowrap; min-width: 60px; font-weight: 600; }
   .input-row input[type="text"] {
-    flex: 1; min-width: 140px; max-width: 500px;
+    flex: 0 0 70%; min-width: 140px; max-width: 500px;
     background: var(--surface);
     border: 1.5px solid var(--border);
     border-radius: 12px;
@@ -357,7 +357,7 @@
         <input type="file" id="fileInput" accept=".txt" onchange="读文件(this)">
       </span>
       <button class="btn btn-ghost" onclick="清空()">清空</button>
-      <span id="remaining" style="margin-left:auto; font-size:13px; color:var(--text-dim);"></span>
+      <span id="remaining" style="margin-left:auto; font-size:12px; color:var(--text-dim);"></span>
     </div>
   </div>
 
