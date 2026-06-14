@@ -25,6 +25,14 @@ from skills.legal import (
     detect_missing_evidence,
     discover_opposing_laws,
 )
+# 案情模式专用技能
+from skills.legal import (
+    identify_relationship,
+    assess_risks,
+    evaluate_evidence,
+    suggest_actions,
+    summarize_case,
+)
 from skills.legal.verify_laws import (
     count_law_citations,
     search_law_database,
@@ -85,12 +93,26 @@ def _存储为JSON_内部(判例名, 分析1, 分析2, 分析3, 分析4, 反例,
     文件名 = f"{文件夹}/{今天}_{判例名}.json"
 
     数据 = {
-        "判例名": 判例名, "日期": 今天,
+        "判例名": 判例名, "日期": 今天, "模式": "判决书分析",
         "核心争议": 分析1, "推理链路": 分析2,
         "未回答问题": 分析3, "可平移性": 分析4,
         "反例检索": 反例, "总结": 总结, "结构化摘要": 结构,
         "论证链检测": 论证链, "证据缺失检测": 证据缺失, "相反法条发现": 相反法条
     }
+    with open(文件名, "w") as f:
+        json.dump(数据, f)
+    return 文件名
+
+def _存储案情JSON(判例名, 法律关系, 风险评估, 证据评估, 行动建议, 总结):
+    文件夹 = 用户数据目录()
+    今天 = str(date.today())
+    文件名 = f"{文件夹}/{今天}_{判例名}.json"
+    数据 = {
+        "判例名": 判例名, "日期": 今天, "模式": "案情分析",
+        "法律关系": 法律关系, "风险评估": 风险评估,
+        "证据评估": 证据评估, "行动建议": 行动建议, "总结": 总结,
+    }
+    os.makedirs(文件夹, exist_ok=True)
     with open(文件名, "w") as f:
         json.dump(数据, f)
     return 文件名
@@ -191,73 +213,83 @@ def 分析路由():
     if len(判例) < 50:
         return jsonify({"error": "判例文字太短（少于50字），请输入完整判例内容"}), 400
 
-    # ── 第一轮：四维基础分析（并行）──
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        f1 = executor.submit(extract_dispute.执行, 判例, api_key)
-        f2 = executor.submit(extract_reasoning.执行, 判例, api_key)
-        f3 = executor.submit(find_unanswered.执行, 判例, api_key)
-        f4 = executor.submit(assess_transfer.执行, 判例, api_key)
-        分析1 = f1.result()
-        分析2 = f2.result()
-        分析3 = f3.result()
-        分析4 = f4.result()
+    if 分析模式 == "case":
+        # ══════ 案情模式：五维分析链 ══════
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            f1 = executor.submit(identify_relationship.执行, 判例, api_key)
+            f2 = executor.submit(assess_risks.执行, 判例, api_key)
+            f3 = executor.submit(evaluate_evidence.执行, 判例, api_key)
+            f4 = executor.submit(suggest_actions.执行, 判例, api_key)
+            法律关系 = f1.result()
+            风险评估 = f2.result()
+            证据评估 = f3.result()
+            行动建议 = f4.result()
+        总结 = summarize_case.执行(判例, 法律关系, 风险评估, 证据评估, 行动建议, api_key)
+        反例 = 论证链 = 证据缺失 = 相反法条 = 结构 = ""
+        全部分析 = [法律关系, 风险评估, 证据评估, 行动建议]
+    else:
+        # ══════ 判决书模式：九维分析链 ══════
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            f1 = executor.submit(extract_dispute.执行, 判例, api_key)
+            f2 = executor.submit(extract_reasoning.执行, 判例, api_key)
+            f3 = executor.submit(find_unanswered.执行, 判例, api_key)
+            f4 = executor.submit(assess_transfer.执行, 判例, api_key)
+            分析1 = f1.result()
+            分析2 = f2.result()
+            分析3 = f3.result()
+            分析4 = f4.result()
+        总结 = generate_summary.执行(判例, 分析1, 分析2, 分析3, 分析4, api_key)
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            f5 = executor.submit(find_counter_arguments.执行, 判例, api_key)
+            f6 = executor.submit(structure_judgment.执行, 判例, 分析1, 分析2, 分析3, 分析4, api_key)
+            f7 = executor.submit(audit_argument_chain.执行, 判例, api_key)
+            f8 = executor.submit(detect_missing_evidence.执行, 判例, api_key)
+            f9 = executor.submit(discover_opposing_laws.执行, 判例, api_key)
+            反例 = f5.result()
+            结构 = f6.result()
+            论证链 = f7.result()
+            证据缺失 = f8.result()
+            相反法条 = f9.result()
+        全部分析 = [分析1, 分析2, 分析3, 分析4, 反例, 论证链, 证据缺失, 相反法条]
 
-    # ── 第二轮：综合总结（依赖第一轮）──
-    总结 = generate_summary.执行(判例, 分析1, 分析2, 分析3, 分析4, api_key)
-
-    # ── 第三轮：深度五维（并行）──
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        f5 = executor.submit(find_counter_arguments.执行, 判例, api_key)
-        f6 = executor.submit(structure_judgment.执行, 判例, 分析1, 分析2, 分析3, 分析4, api_key)
-        f7 = executor.submit(audit_argument_chain.执行, 判例, api_key)
-        f8 = executor.submit(detect_missing_evidence.执行, 判例, api_key)
-        f9 = executor.submit(discover_opposing_laws.执行, 判例, api_key)
-        反例 = f5.result()
-        结构 = f6.result()
-        论证链 = f7.result()
-        证据缺失 = f8.result()
-        相反法条 = f9.result()
-
-    # ── 名称自动生成 ──
     if not 判例名:
         判例名 = 总结.strip().split("\n")[0][:30] or "未命名"
         判例名 = 判例名.replace(" ", "").replace("：", "-").replace(":", "-")
 
-    # ── 第四轮：本地校验层（不调API，全部并行）──
-    全部分析 = [分析1, 分析2, 分析3, 分析4, 反例, 论证链, 证据缺失, 相反法条]
-    if 分析模式 == "case":
-        溯源 = {"warning": "案情模式不适用溯源校验（无判决原文段落可对标）"}
-    else:
-        溯源 = trace_citations(判例, *全部分析)
+    # ── 本地校验层（两种模式共用）──
     法条对照 = search_law_database(法条库目录, *全部分析)
     法条真实性警告 = verify_law_citation_realness(法条库目录, *全部分析)
-    验证 = validate_analysis_quality(分析1, 分析2, 分析3, 分析4, 总结, count_law_citations)
-
-    # ── 存储 ──
-    存储为JSON(判例名, 分析1, 分析2, 分析3, 分析4, 反例, 总结, 结构, 论证链, 证据缺失, 相反法条)
+    验证 = validate_analysis_quality(*全部分析[:4], 总结, count_law_citations)
+    溯源 = trace_citations(判例, *全部分析) if 分析模式 != "case" else {"warning": "案情模式不适用溯源校验"}
 
     # ── 组装返回 ──
     剩余 = 剩余次数查询(uid, ip)
     可信度 = compute_trust_score(验证, 法条对照, 溯源, 法条真实性警告)
     风险列表 = generate_risk_list(验证, 法条对照, 溯源, 法条真实性警告)
 
+    if 分析模式 == "case":
+        分析结果 = {
+            "法律关系": 法律关系, "风险评估": 风险评估,
+            "证据评估": 证据评估, "行动建议": 行动建议, "总结": 总结,
+        }
+        # 案情模式存储（简化字段）
+        _存储案情JSON(判例名, 法律关系, 风险评估, 证据评估, 行动建议, 总结)
+    else:
+        分析结果 = {
+            "核心争议": 分析1, "推理链路": 分析2,
+            "未回答问题": 分析3, "可平移性": 分析4,
+            "反例检索": 反例, "总结": 总结,
+            "结构化摘要": 结构, "论证链检测": 论证链,
+            "证据缺失检测": 证据缺失, "相反法条发现": 相反法条,
+        }
+        存储为JSON(判例名, 分析1, 分析2, 分析3, 分析4, 反例, 总结, 结构, 论证链, 证据缺失, 相反法条)
+
     return jsonify({
         "判例名": 判例名,
         "字数": len(判例),
         "剩余次数": 剩余["剩余"],
         "今日上限": 剩余["上限"],
-        "分析": {
-            "核心争议": 分析1,
-            "推理链路": 分析2,
-            "未回答问题": 分析3,
-            "可平移性": 分析4,
-            "反例检索": 反例,
-            "总结": 总结,
-            "结构化摘要": 结构,
-            "论证链检测": 论证链,
-            "证据缺失检测": 证据缺失,
-            "相反法条发现": 相反法条,
-        },
+        "分析": 分析结果,
         "溯源": 溯源,
         "法条对照": 法条对照,
         "验证": 验证,
@@ -308,22 +340,15 @@ def 详情路由(fname):
     try:
         with open(路径, "r") as f:
             d = json.load(f)
-        # 包成和/analyze一样的格式，历史数据缺失的字段填空
+        # 通用格式：从存储数据提取所有分析字段
+        分析字段 = {}
+        for k, v in d.items():
+            if k not in ("判例名", "日期", "字数", "模式"):
+                分析字段[k] = v
         return jsonify({
             "判例名": d.get("判例名", ""),
-            "字数": d.get("字数", len(d.get("核心争议", ""))),
-            "分析": {
-                "核心争议": d.get("核心争议", ""),
-                "推理链路": d.get("推理链路", ""),
-                "未回答问题": d.get("未回答问题", ""),
-                "可平移性": d.get("可平移性", ""),
-                "反例检索": d.get("反例检索", ""),
-                "总结": d.get("总结", ""),
-                "结构化摘要": d.get("结构化摘要", ""),
-                "论证链检测": d.get("论证链检测", ""),
-                "证据缺失检测": d.get("证据缺失检测", ""),
-                "相反法条发现": d.get("相反法条发现", ""),
-            },
+            "字数": d.get("字数", 0),
+            "分析": 分析字段,
             "溯源": None,
             "法条对照": None,
             "验证": {"通过": True, "问题": [], "法条统计": "历史存档数据"},
@@ -335,66 +360,37 @@ def 详情路由(fname):
 
 @app.route("/download", methods=["POST"])
 def 下载路由():
-    """把分析结果转成可下载的文本报告"""
+    """把分析结果转成可下载的文本报告（通用）"""
     data = request.json
-    报告 = f"""判例分析报告
+    报告 = f"""法律分析报告
 {'='*50}
-判例名称：{data.get('判例名', '')}
-分析日期：{date.today()}
+名称：{data.get('判例名', '')}
+日期：{date.today()}
+"""
+    跳过 = {'判例名', '法条统计', '法条对照', '溯源'}
+    for key, val in data.items():
+        if key in 跳过 or not val:
+            continue
+        报告 += f"""
 
-一、核心争议
+{key}
 {'─'*40}
-{data.get('核心争议', '')}
-
-二、推理链路
+{val}
+"""
+    报告 += f"""
+法条统计
 {'─'*40}
-{data.get('推理链路', '')}
-
-三、未回答问题
-{'─'*40}
-{data.get('未回答问题', '')}
-
-四、可平移性
-{'─'*40}
-{data.get('可平移性', '')}
-
-五、综合总结
-{'─'*40}
-{data.get('总结', '')}
-
-六、反例检索
-{'─'*40}
-{data.get('反例检索', '')}
-
-七、结构化摘要
-{'─'*40}
-{data.get('结构化摘要', '')}
-
-	八、论证链检测
-	{'─'*40}
-{data.get('论证链检测', '')}
-
-	九、证据缺失检测
-	{'─'*40}
-{data.get('证据缺失检测', '')}
-
-	十、相反法条发现
-	{'─'*40}
-{data.get('相反法条发现', '')}
-
-	十一、法条统计
-	{'─'*40}
 {data.get('法条统计', '')}
 
-	十二、法条对照
-	{'─'*40}
+法条对照
+{'─'*40}
 """
     for 条目 in data.get('法条对照', []):
         报告 += f"\n【{条目.get('法名', '')}】{条目.get('引用', '')}\n{条目.get('条文', '')}\n"
 
     报告 += f"""
-	十三、溯源对比
-	{'─'*40}
+溯源
+{'─'*40}
 """
     for item in data.get('溯源', {}).get('items', []):
         mark = "" if item.get('有效') else "⚠️ "

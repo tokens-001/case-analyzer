@@ -448,17 +448,8 @@
       <div class="content" id="r-struct-summary" style="white-space:pre-wrap;"></div>
     </div>
 
-    <!-- 六维分析卡片 2×3 -->
-    <div class="card-grid">
-      <div class="card"><h3>🎯 核心争议</h3><div class="content" id="r-core">-</div></div>
-      <div class="card"><h3>🧠 推理链路</h3><div class="content" id="r-reasoning">-</div></div>
-      <div class="card"><h3>❓ 未回答问题</h3><div class="content" id="r-unanswered">-</div></div>
-      <div class="card"><h3>🔀 可平移性</h3><div class="content" id="r-transfer">-</div></div>
-      <div class="card"><h3>⚔️ 反例检索</h3><div class="content" id="r-counter">-</div></div>
-      <div class="card" style="border-color:rgba(248,136,62,.25);"><h3 style="color:var(--orange);">🔗 论证链分析(AI)</h3><div class="content" id="r-argchain">-</div></div>
-      <div class="card"><h3>🔎 证据缺失分析(AI)</h3><div class="content" id="r-evidence">-</div></div>
-      <div class="card"><h3>⚖️ 相反法条提示(AI)</h3><div class="content" id="r-counterlaw">-</div></div>
-    </div>
+    <!-- 分析卡片区（动态渲染） -->
+    <div class="card-grid" id="cardGrid"></div>
 
     <!-- 综合总结 -->
     <div class="card-summary" id="summary-card" style="display:none; border-left-color:var(--green);">
@@ -508,58 +499,19 @@
       <!-- 第二步：最有价值模块 -->
       <div style="margin-bottom:16px;">
         <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">2. 哪个模块最有价值？（可多选）<span style="color:var(--red);">*</span></div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-valuable">
-          <label class="fb-chip"><input type="checkbox" value="核心争议"> 核心争议</label>
-          <label class="fb-chip"><input type="checkbox" value="推理链路"> 推理链路</label>
-          <label class="fb-chip"><input type="checkbox" value="未回答问题"> 未回答问题</label>
-          <label class="fb-chip"><input type="checkbox" value="可平移性"> 可平移性</label>
-          <label class="fb-chip"><input type="checkbox" value="反例检索"> 反例检索</label>
-          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链分析(AI)</label>
-          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失分析(AI)</label>
-          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条提示(AI)</label>
-          <label class="fb-chip"><input type="checkbox" value="结构化摘要"> 结构化摘要</label>
-          <label class="fb-chip"><input type="checkbox" value="法条版本校验"> 法条版本校验</label>
-          <label class="fb-chip"><input type="checkbox" value="可信度评分"> 可信度评分</label>
-          <label class="fb-chip"><input type="checkbox" value="综合总结"> 综合总结</label>
-        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-valuable"></div>
       </div>
 
       <!-- 第三步：最没用模块 -->
       <div style="margin-bottom:16px;">
         <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">3. 哪个模块最没用？（可多选）<span style="color:var(--red);">*</span></div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-useless">
-          <label class="fb-chip"><input type="checkbox" value="核心争议"> 核心争议</label>
-          <label class="fb-chip"><input type="checkbox" value="推理链路"> 推理链路</label>
-          <label class="fb-chip"><input type="checkbox" value="未回答问题"> 未回答问题</label>
-          <label class="fb-chip"><input type="checkbox" value="可平移性"> 可平移性</label>
-          <label class="fb-chip"><input type="checkbox" value="反例检索"> 反例检索</label>
-          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链分析(AI)</label>
-          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失分析(AI)</label>
-          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条提示(AI)</label>
-          <label class="fb-chip"><input type="checkbox" value="结构化摘要"> 结构化摘要</label>
-          <label class="fb-chip"><input type="checkbox" value="法条版本校验"> 法条版本校验</label>
-          <label class="fb-chip"><input type="checkbox" value="可信度评分"> 可信度评分</label>
-          <label class="fb-chip"><input type="checkbox" value="综合总结"> 综合总结</label>
-        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-useless"></div>
       </div>
 
       <!-- 第四步：如果只能保留3个模块 -->
       <div style="margin-bottom:16px;">
         <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">4. 如果只能保留3个模块，你会留下哪些？（选1-3个）<span style="color:var(--red);">*</span></div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-keep">
-          <label class="fb-chip"><input type="checkbox" value="核心争议"> 核心争议</label>
-          <label class="fb-chip"><input type="checkbox" value="推理链路"> 推理链路</label>
-          <label class="fb-chip"><input type="checkbox" value="未回答问题"> 未回答问题</label>
-          <label class="fb-chip"><input type="checkbox" value="可平移性"> 可平移性</label>
-          <label class="fb-chip"><input type="checkbox" value="反例检索"> 反例检索</label>
-          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链分析(AI)</label>
-          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失分析(AI)</label>
-          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条提示(AI)</label>
-          <label class="fb-chip"><input type="checkbox" value="结构化摘要"> 结构化摘要</label>
-          <label class="fb-chip"><input type="checkbox" value="法条版本校验"> 法条版本校验</label>
-          <label class="fb-chip"><input type="checkbox" value="可信度评分"> 可信度评分</label>
-          <label class="fb-chip"><input type="checkbox" value="综合总结"> 综合总结</label>
-        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-keep"></div>
       </div>
 
       <!-- 第五步：问题类型 -->
@@ -793,17 +745,24 @@ function 渲染结果(data) {
     document.getElementById("trust-dashboard").style.display = "none";
   }
 
-  // 七维卡片
-  document.getElementById("r-core").textContent = a.核心争议 || "";
-  document.getElementById("r-reasoning").textContent = a.推理链路 || "";
-  document.getElementById("r-unanswered").textContent = a.未回答问题 || "";
-  document.getElementById("r-transfer").textContent = a.可平移性 || "";
-  document.getElementById("r-counter").textContent = a.反例检索 || "已检索，未发现明显反例";
-  document.getElementById("r-argchain").textContent = a.论证链检测 || "本项为AI辅助分析，本次无输出";
-  document.getElementById("r-evidence").textContent = a.证据缺失检测 || "本项为AI辅助分析，本次无输出";
-  document.getElementById("r-counterlaw").textContent = a.相反法条发现 || "本项为AI辅助分析，本次无输出";
+  // 动态卡片：根据返回字段渲染
+  const cardTemplates = {
+    "核心争议":  "🎯", "推理链路":  "🧠", "未回答问题": "❓",
+    "可平移性":  "🔀", "反例检索":  "⚔️", "论证链检测": "🔗",
+    "证据缺失检测": "🔎", "相反法条发现": "⚖️", "结构化摘要": "📐",
+    "法律关系":  "⚖️", "风险评估":  "⚠️", "证据评估":  "📋",
+    "行动建议":  "💡",
+  };
+  const grid = document.getElementById("cardGrid");
+  let cardsHTML = "";
+  for (const [key, val] of Object.entries(a)) {
+    if (key === "总结" || !val) continue;
+    const emoji = cardTemplates[key] || "📌";
+    cardsHTML += `<div class="card"><h3>${emoji} ${key}</h3><div class="content">${val}</div></div>`;
+  }
+  grid.innerHTML = cardsHTML;
 
-  // 综合总结（独立卡片）
+  // 综合总结
   document.getElementById("r-summary").textContent = a.总结 || "";
   document.getElementById("summary-card").style.display = a.总结 ? "block" : "none";
 
@@ -880,7 +839,15 @@ function 渲染结果(data) {
   document.getElementById("feedback-form").style.display = "block";
   document.getElementById("feedback-done").style.display = "none";
   document.getElementById("feedback-err").style.display = "none";
-  // 清除上次勾选
+  // 动态生成反馈选项（基于实际分析字段 + 公共模块）
+  const analysisKeys = Object.keys(a).filter(k => k !== "总结" && a[k]);
+  const commonModules = ["可信度评分", "综合总结"];
+  const allOptions = [...analysisKeys, ...commonModules];
+  const chipHTML = allOptions.map(k => `<label class="fb-chip"><input type="checkbox" value="${k}"> ${k}</label>`).join("");
+  document.getElementById("q-valuable").innerHTML = chipHTML;
+  document.getElementById("q-useless").innerHTML = chipHTML;
+  document.getElementById("q-keep").innerHTML = chipHTML;
+  // 清除上次勾选和文字
   document.querySelectorAll("#feedback-section input[type=radio], #feedback-section input[type=checkbox]").forEach(el => el.checked = false);
   document.getElementById("feedbackComment").value = "";
   window._lastResult = data;
@@ -948,21 +915,15 @@ async function 提交反馈() {
 function 下载报告() {
   if (!window._lastResult) return;
   const a = window._lastResult.分析;
+  const body = Object.assign({ 判例名: window._lastResult.判例名 }, a, {
+    法条统计: window._lastResult.验证?.法条统计,
+    法条对照: window._lastResult.法条对照,
+    溯源: window._lastResult.溯源
+  });
   fetch("/download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      判例名: window._lastResult.判例名,
-      核心争议: a.核心争议, 推理链路: a.推理链路,
-      未回答问题: a.未回答问题, 可平移性: a.可平移性,
-      反例检索: a.反例检索, 结构化摘要: a.结构化摘要,
-      论证链检测: a.论证链检测, 证据缺失检测: a.证据缺失检测,
-      相反法条发现: a.相反法条发现,
-      总结: a.总结,
-      法条统计: window._lastResult.验证.法条统计,
-      法条对照: window._lastResult.法条对照,
-      溯源: window._lastResult.溯源
-    })
+    body: JSON.stringify(body)
   }).then(res => res.blob()).then(blob => {
     const url = URL.createObjectURL(blob);
     const el = document.createElement("a");
