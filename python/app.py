@@ -191,8 +191,8 @@ def 分析路由():
         return jsonify({"error": "请输入判例名称"}), 400
     if len(判例名) > 80:
         return jsonify({"error": "判例名称过长（最多80字）"}), 400
-    if not 案发日期:
-        return jsonify({"error": "请选择案发日期（用于校验法条版本）"}), 400
+    if 分析模式 != "case" and not 案发日期:
+        return jsonify({"error": "判决书模式请填写案发日期（用于校验法条版本）"}), 400
     if len(判例) < 50:
         return jsonify({"error": "判例文字太短（少于50字），请输入完整判例内容"}), 400
 

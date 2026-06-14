@@ -398,7 +398,7 @@
       <label>判例名称</label>
       <input type="text" id="caseName" placeholder="例：张某诉李某合同纠纷案" required>
       <label style="min-width:60px;">案发日期</label>
-      <input type="date" id="caseDate" style="flex:0 0 160px;" title="用于校验AI引用的法条版本是否正确" required>
+      <input type="text" id="caseDate" style="flex:0 0 160px;" placeholder="2023年5月 / 2024" title="判决书模式用于校验法条版本，案情模式可不填">
     </div>
 
     <textarea id="caseText" placeholder="在此粘贴判例全文……"></textarea>
@@ -642,6 +642,14 @@ function 切换模式(mode) {
     case: '案情法律分析 · 争议焦点 + 法条依据 + 风险评估'
   };
   document.getElementById('tagline').textContent = taglines[mode];
+  const dateInput = document.getElementById('caseDate');
+  if (mode === 'case') {
+    dateInput.placeholder = '可不填';
+    dateInput.removeAttribute('required');
+  } else {
+    dateInput.placeholder = '2023年5月 / 2024';
+    dateInput.setAttribute('required', '');
+  }
 }
 
 // ---- 页面加载：查剩余次数 ----
@@ -697,8 +705,8 @@ async function 开始分析() {
     显示错误("请输入判例名称");
     return;
   }
-  if (!caseDate) {
-    显示错误("请选择案发日期（用于校验法条版本）");
+  if (当前模式 === 'judgment' && !caseDate) {
+    显示错误("判决书模式请填写案发日期（用于校验法条版本）");
     return;
   }
 
