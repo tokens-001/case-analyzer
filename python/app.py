@@ -184,15 +184,10 @@ def 分析路由():
     data = request.json
     判例名 = data.get("name", "").strip()
     判例 = data.get("text", "").strip()
-    案发日期 = data.get("case_date", "").strip()
     分析模式 = data.get("mode", "judgment")  # "judgment"=判决书 "case"=案情分析
 
-    if not 判例名:
-        return jsonify({"error": "请输入判例名称"}), 400
     if len(判例名) > 80:
         return jsonify({"error": "判例名称过长（最多80字）"}), 400
-    if 分析模式 != "case" and not 案发日期:
-        return jsonify({"error": "判决书模式请填写案发日期（用于校验法条版本）"}), 400
     if len(判例) < 50:
         return jsonify({"error": "判例文字太短（少于50字），请输入完整判例内容"}), 400
 
@@ -223,6 +218,11 @@ def 分析路由():
         证据缺失 = f8.result()
         相反法条 = f9.result()
 
+    # ── 名称自动生成 ──
+    if not 判例名:
+        判例名 = 总结.strip().split("\n")[0][:30] or "未命名"
+        判例名 = 判例名.replace(" ", "").replace("：", "-").replace(":", "-")
+
     # ── 第四轮：本地校验层（不调API，全部并行）──
     全部分析 = [分析1, 分析2, 分析3, 分析4, 反例, 论证链, 证据缺失, 相反法条]
     if 分析模式 == "case":
@@ -235,13 +235,6 @@ def 分析路由():
 
     # ── 存储 ──
     存储为JSON(判例名, 分析1, 分析2, 分析3, 分析4, 反例, 总结, 结构, 论证链, 证据缺失, 相反法条)
-
-    # ── 法条版本时间轴校验 ──
-    if 案发日期 and 法条对照:
-        for item in 法条对照:
-            版本问题 = verify_law_version(案发日期, item)
-            if 版本问题:
-                item["版本警告"] = 版本问题
 
     # ── 组装返回 ──
     剩余 = 剩余次数查询(uid, ip)
