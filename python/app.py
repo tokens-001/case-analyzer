@@ -484,11 +484,12 @@ def 反馈路由():
 @app.route("/feedback-data")
 def 反馈数据路由():
     """查看所有用户反馈汇总"""
-    数据根 = 数据根目录
+    if not os.path.exists(数据根目录):
+        return jsonify({"总数": 0, "反馈": []})
     全部 = []
-    for uid in os.listdir(数据根):
-        反馈目录 = os.path.join(数据根, uid, "feedback")
-        if not os.path.exists(反馈目录):
+    for uid in os.listdir(数据根目录):
+        反馈目录 = os.path.join(数据根目录, uid, "feedback")
+        if not os.path.isdir(反馈目录):
             continue
         for fname in sorted(os.listdir(反馈目录), reverse=True):
             try:
