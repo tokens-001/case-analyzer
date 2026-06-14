@@ -65,6 +65,9 @@
   .mode-btn.active { background: var(--blue); color: #fff; }
   .mode-btn:hover:not(.active) { color: var(--text); background: var(--surface); }
 
+  .fuzzy-label { font-size: 11px; color: var(--text-dim); white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 3px; user-select: none; }
+  .fuzzy-label input { cursor: pointer; }
+
   /* ---- 主布局 ---- */
   .main { max-width: 1120px; margin: 0 auto; padding: 32px 24px; }
 
@@ -399,6 +402,7 @@
       <input type="text" id="caseName" placeholder="例：张某诉李某合同纠纷案" required>
       <label style="min-width:60px;">案发日期</label>
       <input type="text" id="caseDate" style="flex:0 0 160px;" placeholder="2023年5月 / 2024" title="判决书模式用于校验法条版本，案情模式可不填">
+      <label class="fuzzy-label" id="fuzzyLabel"><input type="checkbox" id="fuzzyDate" onchange="切换模糊日期()"> 记不清</label>
     </div>
 
     <textarea id="caseText" placeholder="在此粘贴判例全文……"></textarea>
@@ -646,8 +650,28 @@ function 切换模式(mode) {
   if (mode === 'case') {
     dateInput.placeholder = '可不填';
     dateInput.removeAttribute('required');
+    document.getElementById('fuzzyLabel').style.display = 'none';
+    document.getElementById('fuzzyDate').checked = false;
   } else {
     dateInput.placeholder = '2023年5月 / 2024';
+    document.getElementById('fuzzyLabel').style.display = '';
+    if (!document.getElementById('fuzzyDate').checked) {
+      dateInput.setAttribute('required', '');
+    }
+  }
+}
+
+function 切换模糊日期() {
+  const checked = document.getElementById('fuzzyDate').checked;
+  const dateInput = document.getElementById('caseDate');
+  if (checked) {
+    dateInput.value = '';
+    dateInput.placeholder = '记不清';
+    dateInput.removeAttribute('required');
+    dateInput.disabled = true;
+  } else {
+    dateInput.placeholder = '2023年5月 / 2024';
+    dateInput.disabled = false;
     dateInput.setAttribute('required', '');
   }
 }
@@ -705,8 +729,8 @@ async function 开始分析() {
     显示错误("请输入判例名称");
     return;
   }
-  if (当前模式 === 'judgment' && !caseDate) {
-    显示错误("判决书模式请填写案发日期（用于校验法条版本）");
+  if (当前模式 === 'judgment' && !caseDate && !document.getElementById('fuzzyDate').checked) {
+    显示错误("判决书模式请填写案发日期，或勾选"记不清"");
     return;
   }
 
