@@ -500,9 +500,11 @@ def 反馈数据路由():
                 全部.append(d)
             except:
                 pass
-    resp = jsonify({"总数": len(全部), "反馈": 全部[-50:]})
-    resp.headers["Content-Type"] = "application/json; charset=utf-8"
-    return resp
+    from flask import Response
+    return Response(
+        json.dumps({"总数": len(全部), "反馈": 全部[-50:]}, ensure_ascii=False, indent=2),
+        mimetype="application/json; charset=utf-8"
+    )
 
 
 if __name__ == "__main__":
