@@ -532,10 +532,12 @@ function 切换模式(mode) {
   if (mode === 'case') {
     document.getElementById('caseNameLabel').textContent = '纠纷名称';
     document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：合伙纠纷';
+    document.getElementById('caseText').placeholder = '请尽量完整描述纠纷经过、双方主张和现阶段情况……';
     document.getElementById('formatHint').textContent = '描述你的纠纷情况 · 建议详细陈述事实经过';
   } else {
     document.getElementById('caseNameLabel').textContent = '判例名称';
     document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：张某诉李某合同纠纷案';
+    document.getElementById('caseText').placeholder = '粘贴判决书全文，或上传文件……';
     document.getElementById('formatHint').textContent = '支持判决书、裁定书、仲裁裁决 · 建议500字以上';
   }
 }
