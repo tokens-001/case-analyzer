@@ -414,7 +414,7 @@
     <div class="header-logo">⚖️</div>
     <div class="header-text">
       <h1>判例助手</h1>
-      <div class="tagline">AI驱动的判例分析 · 硬校验层保障</div>
+      <div class="tagline">AI驱动的判例分析 · 溯源校验 + 法条版本核对</div>
     </div>
   </div>
 </div>
@@ -483,9 +483,9 @@
       <div class="card"><h3>❓ 未回答问题</h3><div class="content" id="r-unanswered">-</div></div>
       <div class="card"><h3>🔀 可平移性</h3><div class="content" id="r-transfer">-</div></div>
       <div class="card"><h3>⚔️ 反例检索</h3><div class="content" id="r-counter">-</div></div>
-      <div class="card" style="border-color:rgba(248,136,62,.25);"><h3 style="color:var(--orange);">🔗 论证链检测</h3><div class="content" id="r-argchain">-</div></div>
-      <div class="card"><h3>🔎 证据缺失检测</h3><div class="content" id="r-evidence">-</div></div>
-      <div class="card"><h3>⚖️ 相反法条发现</h3><div class="content" id="r-counterlaw">-</div></div>
+      <div class="card" style="border-color:rgba(248,136,62,.25);"><h3 style="color:var(--orange);">🔗 论证链分析(AI)</h3><div class="content" id="r-argchain">-</div></div>
+      <div class="card"><h3>🔎 证据缺失分析(AI)</h3><div class="content" id="r-evidence">-</div></div>
+      <div class="card"><h3>⚖️ 相反法条提示(AI)</h3><div class="content" id="r-counterlaw">-</div></div>
     </div>
 
     <!-- 综合总结 -->
@@ -554,9 +554,9 @@
           <label class="fb-chip"><input type="checkbox" value="未回答问题"> 未回答问题</label>
           <label class="fb-chip"><input type="checkbox" value="可平移性"> 可平移性</label>
           <label class="fb-chip"><input type="checkbox" value="反例检索"> 反例检索</label>
-          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链检测</label>
-          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失检测</label>
-          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条发现</label>
+          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链分析(AI)</label>
+          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失分析(AI)</label>
+          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条提示(AI)</label>
           <label class="fb-chip"><input type="checkbox" value="结构化摘要"> 结构化摘要</label>
           <label class="fb-chip"><input type="checkbox" value="法条版本校验"> 法条版本校验</label>
           <label class="fb-chip"><input type="checkbox" value="可信度评分"> 可信度评分</label>
@@ -573,9 +573,9 @@
           <label class="fb-chip"><input type="checkbox" value="未回答问题"> 未回答问题</label>
           <label class="fb-chip"><input type="checkbox" value="可平移性"> 可平移性</label>
           <label class="fb-chip"><input type="checkbox" value="反例检索"> 反例检索</label>
-          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链检测</label>
-          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失检测</label>
-          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条发现</label>
+          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链分析(AI)</label>
+          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失分析(AI)</label>
+          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条提示(AI)</label>
           <label class="fb-chip"><input type="checkbox" value="结构化摘要"> 结构化摘要</label>
           <label class="fb-chip"><input type="checkbox" value="法条版本校验"> 法条版本校验</label>
           <label class="fb-chip"><input type="checkbox" value="可信度评分"> 可信度评分</label>
@@ -592,9 +592,9 @@
           <label class="fb-chip"><input type="checkbox" value="未回答问题"> 未回答问题</label>
           <label class="fb-chip"><input type="checkbox" value="可平移性"> 可平移性</label>
           <label class="fb-chip"><input type="checkbox" value="反例检索"> 反例检索</label>
-          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链检测</label>
-          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失检测</label>
-          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条发现</label>
+          <label class="fb-chip"><input type="checkbox" value="论证链检测"> 论证链分析(AI)</label>
+          <label class="fb-chip"><input type="checkbox" value="证据缺失检测"> 证据缺失分析(AI)</label>
+          <label class="fb-chip"><input type="checkbox" value="相反法条发现"> 相反法条提示(AI)</label>
           <label class="fb-chip"><input type="checkbox" value="结构化摘要"> 结构化摘要</label>
           <label class="fb-chip"><input type="checkbox" value="法条版本校验"> 法条版本校验</label>
           <label class="fb-chip"><input type="checkbox" value="可信度评分"> 可信度评分</label>
@@ -801,14 +801,16 @@ function 渲染结果(data) {
     structSection.style.display = "none";
   }
 
-  // 可信度仪表盘
+  // 可信度仪表盘（仅显示等级+明细，不显示伪精确数字分）
   if (data.可信度) {
     const t = data.可信度;
     document.getElementById("trust-dashboard").style.display = "flex";
     const ring = document.getElementById("trust-ring");
-    ring.textContent = t.分数;
+    const levelText = t.等级 === "高" ? "可信" : t.等级 === "中" ? "需审阅" : "不可信";
+    ring.textContent = levelText;
     ring.className = "trust-score-ring " + (t.等级 === "高" ? "high" : t.等级 === "中" ? "mid" : "low");
-    document.getElementById("trust-sub").textContent = "等级：" + (t.等级 === "高" ? "可信" : t.等级 === "中" ? "需审阅" : "不可信");
+    ring.style.fontSize = "16px";
+    document.getElementById("trust-sub").textContent = "";
     const breakdownItems = (t.明细 || []).map(d =>
       `<span class="tbitem ${d.影响 > 0 ? 'up' : 'down'}">${d.影响 > 0 ? '▲' : '▼'} ${d.来源}</span>`
     ).join("");
@@ -825,9 +827,9 @@ function 渲染结果(data) {
   document.getElementById("r-unanswered").textContent = a.未回答问题 || "";
   document.getElementById("r-transfer").textContent = a.可平移性 || "";
   document.getElementById("r-counter").textContent = a.反例检索 || "已检索，未发现明显反例";
-  document.getElementById("r-argchain").textContent = a.论证链检测 || "已检测，未发现明显逻辑断裂";
-  document.getElementById("r-evidence").textContent = a.证据缺失检测 || "已检测，未发现明显证据缺失";
-  document.getElementById("r-counterlaw").textContent = a.相反法条发现 || "已检索，未发现明显冲突法条";
+  document.getElementById("r-argchain").textContent = a.论证链检测 || "本项为AI辅助分析，本次无输出";
+  document.getElementById("r-evidence").textContent = a.证据缺失检测 || "本项为AI辅助分析，本次无输出";
+  document.getElementById("r-counterlaw").textContent = a.相反法条发现 || "本项为AI辅助分析，本次无输出";
 
   // 综合总结（独立卡片）
   document.getElementById("r-summary").textContent = a.总结 || "";

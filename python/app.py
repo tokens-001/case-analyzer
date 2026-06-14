@@ -1,7 +1,7 @@
 # 判例助手 - Web版
 # Flask后端：接收判例 → 调用DeepSeek分析 → 返回结果
 
-import os, json, uuid
+import os, json, uuid, re
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
@@ -309,7 +309,8 @@ def 分析路由():
 
     # ── 组装返回 ──
     剩余 = 剩余次数查询(uid, ip)
-    相邻法条 = find_adjacent_laws(法条库目录, 法条对照)
+    # 法条库数据不足，暂禁用相邻法条（扩库后改回 find_adjacent_laws(法条库目录, 法条对照)）
+    相邻法条 = []
     可信度 = compute_trust_score(验证, 法条对照, 溯源, 法条真实性警告)
     风险列表 = generate_risk_list(验证, 法条对照, 溯源, 法条真实性警告)
 
@@ -403,7 +404,8 @@ def 详情路由(fname):
             "验证": {"通过": True, "问题": [], "法条统计": "历史存档数据"},
             "可信度": None,
             "风险列表": [],
-            "关联判例": 查关联判例(fname)
+            # 判例存量不足，暂禁用关联（积累后改回 查关联判例(fname)）
+            "关联判例": []
         })
     except:
         return jsonify({"error": "读取失败"}), 500
