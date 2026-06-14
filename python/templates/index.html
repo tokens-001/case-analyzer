@@ -343,12 +343,28 @@
   .trust-breakdown .tbitem.up { color: var(--green); }
   .trust-breakdown .tbitem.down { color: var(--red); }
 
-  .adj-tag.after { background: rgba(163,113,247,.12); color: var(--purple); }
-
   /* 折叠区 */
   .collapse-toggle {
     cursor: pointer; user-select: none;
     display: flex; align-items: center; gap: 6px;
+  }
+  .collapse-toggle:hover { opacity: 0.8; }
+  .collapse-toggle .arrow { transition: transform .2s; font-size: 11px; }
+  .collapse-toggle.open .arrow { transform: rotate(90deg); }
+  .collapse-body { display: none; margin-top: 14px; }
+  .collapse-body.open { display: block; }
+
+  /* 响应式 */
+  @media (max-width: 700px) {
+    .card-grid { grid-template-columns: 1fr; }
+    .header { padding: 14px 18px; }
+    .main { padding: 16px 12px; }
+    .input-section { padding: 18px; }
+    .trust-dashboard { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
 
 <!-- 头部 -->
 <div class="header">
