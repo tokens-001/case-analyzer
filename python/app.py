@@ -439,7 +439,10 @@ def 下载路由():
     return Response(
         报告,
         mimetype="text/plain; charset=utf-8",
-        headers={"Content-Disposition": f"attachment; filename={data.get('判例名', 'report')}_分析报告.txt"}
+        headers={
+            "Content-Disposition": "attachment; filename=report.txt",
+            "Content-Type": "text/plain; charset=utf-8"
+        }
     )
 
 @app.route("/feedback", methods=["POST"])
