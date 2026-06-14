@@ -333,7 +333,7 @@
       <span class="features-title">律师对抗分析（5维）</span>
       <span class="features-desc">评估风险与诉讼路径</span>
     </div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;">支持判决书、裁定书、仲裁裁决 · 建议500字以上</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;" id="formatHint">支持判决书、裁定书、仲裁裁决 · 建议500字以上</div>
     <div class="input-row">
       <label id="caseNameLabel">判例名称</label>
       <input type="text" id="caseName" placeholder="可留空，AI自动提取，例：张某诉李某合同纠纷案">
@@ -532,9 +532,11 @@ function 切换模式(mode) {
   if (mode === 'case') {
     document.getElementById('caseNameLabel').textContent = '纠纷名称';
     document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：合伙纠纷';
+    document.getElementById('formatHint').textContent = '描述你的纠纷情况 · 建议详细陈述事实经过';
   } else {
     document.getElementById('caseNameLabel').textContent = '判例名称';
     document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：张某诉李某合同纠纷案';
+    document.getElementById('formatHint').textContent = '支持判决书、裁定书、仲裁裁决 · 建议500字以上';
   }
 }
 
