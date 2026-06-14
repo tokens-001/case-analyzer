@@ -85,7 +85,7 @@
   .input-row { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
   .input-row label { font-size: 13px; color: var(--text); white-space: nowrap; min-width: 60px; font-weight: 600; }
   .input-row input[type="text"] {
-    flex: 1; min-width: 140px;
+    flex: 1; min-width: 140px; max-width: 400px;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -97,7 +97,7 @@
   .input-row input[type="text"]:focus { outline: none; border-color: var(--navy); }
 
   textarea {
-    width: 100%; height: 180px;
+    width: 100%; height: 200px;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -318,7 +318,7 @@
     <div class="header-logo">⚖️</div>
     <div class="header-text">
       <h1>判例助手<span style="font-size:11px;color:var(--amber);font-weight:400;">（测试版）</span></h1>
-      <div class="tagline" id="tagline">8维法院推理拆解：不是总结判决书，是还原裁判逻辑</div>
+      <div class="tagline" id="tagline">拆解法院如何得出结论</div>
     </div>
   </div>
   <div class="mode-switch">
@@ -339,13 +339,13 @@
   <div class="input-section">
     <div class="features" id="features-judgment">
       <div class="features-header"><span class="features-title">法院推理拆解（8维）</span></div>
-      <div class="features-row"><span class="features-label">还原裁判</span> ① 结构化摘要 → ② 核心争议 → ③ 推理链路 → ④ 法条适用精析</div>
-      <div class="features-row"><span class="features-label">审查裁判</span> ⑤ 对立解释路径 → ⑥ 论证完整性检查 → ⑦ 程序问题识别 → ⑧ 未回答问题</div>
+      <div class="features-row"><span class="features-label">[还原裁判逻辑]</span> ① 结构化摘要 → ② 核心争议 → ③ 推理链路 → ④ 法条适用精析</div>
+      <div class="features-row"><span class="features-label">[审查裁判是否充分]</span> ⑤ 对立解释路径 → ⑥ 论证完整性检查 → ⑦ 程序问题识别 → ⑧ 未回答问题</div>
     </div>
     <div class="features" id="features-case" style="display:none">
       <div class="features-header"><span class="features-title">律师对抗分析（5维）</span></div>
-      <div class="features-row"><span class="features-label">评估处境</span> ① 法律关系识别 → ② 事实与证据评估 → ③ 对抗路径分析</div>
-      <div class="features-row"><span class="features-label">制定策略</span> ④ 风险推演 → ⑤ 行动建议</div>
+      <div class="features-row"><span class="features-label">[评估你的处境]</span> ① 法律关系识别 → ② 事实与证据评估 → ③ 对抗路径分析</div>
+      <div class="features-row"><span class="features-label">[制定行动策略]</span> ④ 风险推演 → ⑤ 行动建议</div>
     </div>
     <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">支持判决书、裁定书、仲裁裁决 | 建议500字以上</div>
     <div class="input-row">
@@ -542,8 +542,8 @@ function 切换模式(mode) {
   document.getElementById('mode-judgment').classList.toggle('active', mode === 'judgment');
   document.getElementById('mode-case').classList.toggle('active', mode === 'case');
   const taglines = {
-    judgment: '8维法院推理拆解：不是总结判决书，是还原裁判逻辑',
-    case: '5维律师对抗分析：不是给法律建议，是预演诉讼路径'
+    judgment: '拆解法院如何得出结论',
+    case: '预演诉讼路径与风险评估'
   };
   document.getElementById('tagline').textContent = taglines[mode];
   document.getElementById('features-judgment').style.display = mode === 'case' ? 'none' : 'flex';
