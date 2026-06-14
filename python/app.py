@@ -96,7 +96,7 @@ def _存储为JSON_内部(判例名, 分析1, 分析2, 分析3, 分析4, 反例,
     return 文件名
 
 # ---- 9. 每日次数限制 ----
-每日上限 = int(os.environ.get("DAILY_LIMIT", "3"))
+每日上限 = int(os.environ.get("DAILY_LIMIT", "5"))
 
 def 获取客户端IP():
     """获取真实客户端IP，优先取代理转发的头（PythonAnywhere会设X-Forwarded-For）"""
