@@ -63,16 +63,11 @@
   .mode-btn:hover:not(.active) { color: #fff; border-color: rgba(255,255,255,.25); }
 
   .features {
-    background: #eef2f7; border: 1px solid #d6dde8; border-radius: 8px;
-    padding: 14px 16px; margin-bottom: 16px;
+    margin-bottom: 14px; font-size: 12px; color: var(--text-dim);
   }
-  .features-title { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 10px; }
-  .features-group { font-size: 10px; color: var(--text-dim); margin: 6px 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px; }
-  .features-group:first-of-type { margin-top: 0; }
-  .features-flow { font-size: 12px; color: var(--navy); line-height: 1.8; }
-  .features-flow span { font-weight: 600; }
-  .features-list span { font-size: 12px; color: var(--navy); font-weight: 500; }
-  .features-list span::before { content: none; }
+  .features-title { font-weight: 700; color: var(--navy); margin-right: 6px; }
+  .features-flow { color: var(--navy); }
+  .features-flow span { font-weight: 500; }
 
 
   .main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
@@ -101,7 +96,7 @@
   .input-row input[type="text"]:focus { outline: none; border-color: var(--navy); }
 
   textarea {
-    width: 100%; height: 200px;
+    width: 100%; height: 180px;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -340,18 +335,16 @@
   <!-- 输入区 -->
   <div class="input-section">
     <div class="features" id="features-judgment">
-      <div class="features-title">法院推理拆解（8维）</div>
-      <div class="features-group">还原法院如何得出结论</div>
-      <div class="features-flow"><span>① 结构化摘要</span> → <span>② 核心争议</span> → <span>③ 推理链路</span> → <span>④ 法条适用精析</span></div>
-      <div class="features-group">审查裁判是否充分</div>
-      <div class="features-flow"><span>⑤ 对立解释路径</span> → <span>⑥ 论证完整性检查</span> → <span>⑦ 程序问题识别</span> → <span>⑧ 未回答问题</span></div>
+      <span class="features-title">法院推理拆解（8维）</span>
+      <span class="features-flow">① 结构化摘要 → ② 核心争议 → ③ 推理链路 → ④ 法条适用精析</span>
+      <span style="margin:0 8px;color:var(--border);">|</span>
+      <span class="features-flow">⑤ 对立解释路径 → ⑥ 论证完整性检查 → ⑦ 程序问题识别 → ⑧ 未回答问题</span>
     </div>
     <div class="features" id="features-case" style="display:none">
-      <div class="features-title">律师对抗分析（5维）</div>
-      <div class="features-group">评估你的处境</div>
-      <div class="features-flow"><span>① 法律关系识别</span> → <span>② 事实与证据评估</span> → <span>③ 对抗路径分析</span></div>
-      <div class="features-group">制定行动策略</div>
-      <div class="features-flow"><span>④ 风险推演</span> → <span>⑤ 行动建议</span></div>
+      <span class="features-title">律师对抗分析（5维）</span>
+      <span class="features-flow">① 法律关系识别 → ② 事实与证据评估 → ③ 对抗路径分析</span>
+      <span style="margin:0 8px;color:var(--border);">|</span>
+      <span class="features-flow">④ 风险推演 → ⑤ 行动建议</span>
     </div>
     <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">支持判决书、裁定书、仲裁裁决 | 建议500字以上</div>
     <div class="input-row">
@@ -526,8 +519,8 @@
   </div>
   <div class="history-list" id="historyList">
     <div style="margin-bottom:12px;">
-      <input type="text" id="searchInput" placeholder="搜索判例名、争议、总结…" 
-        style="width:100%;background:#1a1d23;border:1px solid #323842;border-radius:6px;padding:10px 14px;color:#e5e7eb;font-size:14px;"
+      <input type="text" id="searchInput" placeholder="搜索历史分析记录…"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;"
         oninput="过滤历史()">
     </div>
     <div id="historyItems"></div>
