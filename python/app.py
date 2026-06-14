@@ -13,23 +13,23 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 # ═══════════════════════════════════════════════════════════
 # 法律技能库导入
 # ═══════════════════════════════════════════════════════════
+# 判决书模式技能（8维）
 from skills.legal import (
+    structure_summary,
     extract_dispute,
     extract_reasoning,
+    analyze_law_application,
+    find_opposing_paths,
+    audit_argument_integrity,
+    identify_procedural_issues,
     find_unanswered,
-    assess_transfer,
-    generate_summary,
-    find_counter_arguments,
-    structure_judgment,
-    audit_argument_chain,
-    detect_missing_evidence,
-    discover_opposing_laws,
 )
-# 案情模式专用技能
+# 案情模式技能（5维）
 from skills.legal import (
     identify_relationship,
-    assess_risks,
-    evaluate_evidence,
+    assess_facts_evidence,
+    analyze_opposing_paths,
+    project_risks,
     suggest_actions,
     summarize_case,
 )
@@ -84,33 +84,31 @@ def 用户数据目录():
 # 验证分析结果 → 已迁移到 skills/legal/score_analysis.py
 
 # ---- 8. 存储 ----
-def 存储为JSON(判例名, 分析1, 分析2, 分析3, 分析4, 反例, 总结, 结构, 论证链, 证据缺失, 相反法条):
-    return _存储为JSON_内部(判例名, 分析1, 分析2, 分析3, 分析4, 反例, 总结, 结构, 论证链, 证据缺失, 相反法条)
-
-def _存储为JSON_内部(判例名, 分析1, 分析2, 分析3, 分析4, 反例, 总结, 结构, 论证链, 证据缺失, 相反法条):
+def _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路径, 论证检查, 程序问题, 未答):
     文件夹 = 用户数据目录()
     今天 = str(date.today())
     文件名 = f"{文件夹}/{今天}_{判例名}.json"
-
     数据 = {
         "判例名": 判例名, "日期": 今天, "模式": "判决书分析",
-        "核心争议": 分析1, "推理链路": 分析2,
-        "未回答问题": 分析3, "可平移性": 分析4,
-        "反例检索": 反例, "总结": 总结, "结构化摘要": 结构,
-        "论证链检测": 论证链, "证据缺失检测": 证据缺失, "相反法条发现": 相反法条
+        "结构化摘要": 结构, "核心争议": 争议,
+        "推理链路": 推理, "法条适用精析": 法条精析,
+        "对立解释路径": 对立路径, "论证完整性检查": 论证检查,
+        "程序问题识别": 程序问题, "未回答问题": 未答,
     }
+    os.makedirs(文件夹, exist_ok=True)
     with open(文件名, "w") as f:
         json.dump(数据, f)
     return 文件名
 
-def _存储案情JSON(判例名, 法律关系, 风险评估, 证据评估, 行动建议, 总结):
+def _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, 总结):
     文件夹 = 用户数据目录()
     今天 = str(date.today())
     文件名 = f"{文件夹}/{今天}_{判例名}.json"
     数据 = {
         "判例名": 判例名, "日期": 今天, "模式": "案情分析",
-        "法律关系": 法律关系, "风险评估": 风险评估,
-        "证据评估": 证据评估, "行动建议": 行动建议, "总结": 总结,
+        "法律关系": 法律关系, "事实与证据": 事实证据,
+        "对抗路径": 对抗路径, "风险推演": 风险推演,
+        "行动建议": 行动建议, "总结": 总结,
     }
     os.makedirs(文件夹, exist_ok=True)
     with open(文件名, "w") as f:
@@ -214,43 +212,40 @@ def 分析路由():
         return jsonify({"error": "判例文字太短（少于50字），请输入完整判例内容"}), 400
 
     if 分析模式 == "case":
-        # ══════ 案情模式：五维分析链 ══════
+        # ══════ 案情模式：五维分析链（律师视角） ══════
         with ThreadPoolExecutor(max_workers=4) as executor:
             f1 = executor.submit(identify_relationship.执行, 判例, api_key)
-            f2 = executor.submit(assess_risks.执行, 判例, api_key)
-            f3 = executor.submit(evaluate_evidence.执行, 判例, api_key)
-            f4 = executor.submit(suggest_actions.执行, 判例, api_key)
+            f2 = executor.submit(assess_facts_evidence.执行, 判例, api_key)
+            f3 = executor.submit(analyze_opposing_paths.执行, 判例, api_key)
+            f4 = executor.submit(project_risks.执行, 判例, api_key)
             法律关系 = f1.result()
-            风险评估 = f2.result()
-            证据评估 = f3.result()
-            行动建议 = f4.result()
-        总结 = summarize_case.执行(判例, 法律关系, 风险评估, 证据评估, 行动建议, api_key)
-        反例 = 论证链 = 证据缺失 = 相反法条 = 结构 = ""
-        全部分析 = [法律关系, 风险评估, 证据评估, 行动建议]
+            事实证据 = f2.result()
+            对抗路径 = f3.result()
+            风险推演 = f4.result()
+        行动建议 = suggest_actions.执行(判例, api_key)
+        总结 = summarize_case.执行(判例, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, api_key)
+        全部分析 = [法律关系, 事实证据, 对抗路径, 风险推演, 行动建议]
     else:
-        # ══════ 判决书模式：九维分析链 ══════
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        # ══════ 判决书模式：八维分析链（法院视角） ══════
+        结构 = structure_summary.执行(判例, api_key)
+        with ThreadPoolExecutor(max_workers=3) as executor:
             f1 = executor.submit(extract_dispute.执行, 判例, api_key)
             f2 = executor.submit(extract_reasoning.执行, 判例, api_key)
             f3 = executor.submit(find_unanswered.执行, 判例, api_key)
-            f4 = executor.submit(assess_transfer.执行, 判例, api_key)
-            分析1 = f1.result()
-            分析2 = f2.result()
-            分析3 = f3.result()
-            分析4 = f4.result()
-        总结 = generate_summary.执行(判例, 分析1, 分析2, 分析3, 分析4, api_key)
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            f5 = executor.submit(find_counter_arguments.执行, 判例, api_key)
-            f6 = executor.submit(structure_judgment.执行, 判例, 分析1, 分析2, 分析3, 分析4, api_key)
-            f7 = executor.submit(audit_argument_chain.执行, 判例, api_key)
-            f8 = executor.submit(detect_missing_evidence.执行, 判例, api_key)
-            f9 = executor.submit(discover_opposing_laws.执行, 判例, api_key)
-            反例 = f5.result()
-            结构 = f6.result()
-            论证链 = f7.result()
-            证据缺失 = f8.result()
-            相反法条 = f9.result()
-        全部分析 = [分析1, 分析2, 分析3, 分析4, 反例, 论证链, 证据缺失, 相反法条]
+            争议 = f1.result()
+            推理 = f2.result()
+            未答 = f3.result()
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            f4 = executor.submit(analyze_law_application.执行, 判例, api_key)
+            f5 = executor.submit(find_opposing_paths.执行, 判例, api_key)
+            f6 = executor.submit(audit_argument_integrity.执行, 判例, api_key)
+            f7 = executor.submit(identify_procedural_issues.执行, 判例, api_key)
+            法条精析 = f4.result()
+            对立路径 = f5.result()
+            论证检查 = f6.result()
+            程序问题 = f7.result()
+        总结 = 结构  # 结构化摘要即判决书模式的"总结"
+        全部分析 = [争议, 推理, 未答, 法条精析, 对立路径, 论证检查, 程序问题]
 
     if not 判例名:
         # 从总结提取前30字作名称，跳过标题标记和废话前缀
@@ -276,20 +271,19 @@ def 分析路由():
 
     if 分析模式 == "case":
         分析结果 = {
-            "法律关系": 法律关系, "风险评估": 风险评估,
-            "证据评估": 证据评估, "行动建议": 行动建议, "总结": 总结,
+            "法律关系": 法律关系, "事实与证据": 事实证据,
+            "对抗路径": 对抗路径, "风险推演": 风险推演,
+            "行动建议": 行动建议, "总结": 总结,
         }
-        # 案情模式存储（简化字段）
-        _存储案情JSON(判例名, 法律关系, 风险评估, 证据评估, 行动建议, 总结)
+        _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, 总结)
     else:
         分析结果 = {
-            "核心争议": 分析1, "推理链路": 分析2,
-            "未回答问题": 分析3, "可平移性": 分析4,
-            "反例检索": 反例, "总结": 总结,
-            "结构化摘要": 结构, "论证链检测": 论证链,
-            "证据缺失检测": 证据缺失, "相反法条发现": 相反法条,
+            "结构化摘要": 结构, "核心争议": 争议,
+            "推理链路": 推理, "法条适用精析": 法条精析,
+            "对立解释路径": 对立路径, "论证完整性检查": 论证检查,
+            "程序问题识别": 程序问题, "未回答问题": 未答,
         }
-        存储为JSON(判例名, 分析1, 分析2, 分析3, 分析4, 反例, 总结, 结构, 论证链, 证据缺失, 相反法条)
+        _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路径, 论证检查, 程序问题, 未答)
 
     return jsonify({
         "判例名": 判例名,

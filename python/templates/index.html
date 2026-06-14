@@ -507,8 +507,8 @@ function 切换模式(mode) {
   document.getElementById('mode-judgment').classList.toggle('active', mode === 'judgment');
   document.getElementById('mode-case').classList.toggle('active', mode === 'case');
   const taglines = {
-    judgment: 'AI驱动的判例分析 · 溯源校验 + 法条版本核对',
-    case: '案情法律分析 · 争议焦点 + 法条依据 + 风险评估'
+    judgment: '法院视角 · 结构化摘要 → 法条精析 → 对立路径 → 程序审查',
+    case: '律师视角 · 法律关系 → 证据评估 → 对抗分析 → 风险推演'
   };
   document.getElementById('tagline').textContent = taglines[mode];
   if (mode === 'case') {
@@ -663,11 +663,11 @@ function 渲染结果(data) {
 
   // 动态卡片：根据返回字段渲染
   const cardTemplates = {
-    "核心争议":  "🎯", "推理链路":  "🧠", "未回答问题": "❓",
-    "可平移性":  "🔀", "反例检索":  "⚔️", "论证链检测": "🔗",
-    "证据缺失检测": "🔎", "相反法条发现": "⚖️", "结构化摘要": "📐",
-    "法律关系":  "⚖️", "风险评估":  "⚠️", "证据评估":  "📋",
-    "行动建议":  "💡",
+    "结构化摘要": "📐", "核心争议": "🎯", "推理链路": "🧠",
+    "法条适用精析": "⚖️", "对立解释路径": "🔀",
+    "论证完整性检查": "🔗", "程序问题识别": "🏛️", "未回答问题": "❓",
+    "法律关系": "⚖️", "事实与证据": "📋",
+    "对抗路径": "⚔️", "风险推演": "⚠️", "行动建议": "💡",
   };
   const grid = document.getElementById("cardGrid");
   let cardsHTML = "";
