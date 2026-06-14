@@ -299,29 +299,6 @@
   .risk-item.warning { background: rgba(210,153,29,.08); border: 1px solid rgba(210,153,29,.3); color: var(--amber); }
   .risk-item.danger { background: rgba(248,81,73,.08); border: 1px solid rgba(248,81,73,.3); color: var(--red); }
 
-  /* 关联判例 */
-  .related-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px; padding: 22px; margin-bottom: 16px;
-  }
-  .related-section h3 { font-size: 13px; font-weight: 700; color: var(--text-bright); margin-bottom: 14px; }
-  .related-item {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 14px 18px; margin-bottom: 8px;
-    cursor: pointer; transition: all .2s;
-  }
-  .related-item:hover { border-color: var(--blue); box-shadow: 0 2px 12px rgba(88,166,255,.08); }
-  .related-item .rel-name { font-size: 14px; color: var(--text-bright); font-weight: 600; }
-  .related-item .rel-meta { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
-  .related-item .rel-laws {
-    font-size: 11px; color: var(--blue); margin-top: 6px;
-    display: flex; flex-wrap: wrap; gap: 5px;
-  }
-  .related-item .rel-laws span {
-    background: rgba(88,166,255,.08); padding: 3px 10px; border-radius: 12px;
-    border: 1px solid rgba(88,166,255,.15);
-  }
 
   /* 历史 */
   .history-toggle {
@@ -366,47 +343,12 @@
   .trust-breakdown .tbitem.up { color: var(--green); }
   .trust-breakdown .tbitem.down { color: var(--red); }
 
-  /* 相邻法条 */
-  .adjacent-section {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 22px; margin-bottom: 16px;
-  }
-  .adjacent-section h3 { font-size: 13px; font-weight: 700; color: var(--text-bright); margin-bottom: 14px; }
-  .adjacent-item {
-    background: var(--surface2); padding: 10px 14px; margin-bottom: 6px;
-    border-radius: 8px; font-size: 12px; color: var(--text-dim);
-    border: 1px solid var(--border);
-    display: flex; gap: 10px; align-items: flex-start;
-  }
-  .adjacent-item .adj-tag {
-    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .adj-tag.before { background: rgba(88,166,255,.12); color: var(--blue); }
   .adj-tag.after { background: rgba(163,113,247,.12); color: var(--purple); }
 
   /* 折叠区 */
   .collapse-toggle {
     cursor: pointer; user-select: none;
     display: flex; align-items: center; gap: 6px;
-  }
-  .collapse-toggle:hover { opacity: 0.8; }
-  .collapse-toggle .arrow { transition: transform .2s; font-size: 11px; }
-  .collapse-toggle.open .arrow { transform: rotate(90deg); }
-  .collapse-body { display: none; margin-top: 14px; }
-  .collapse-body.open { display: block; }
-
-  /* 响应式 */
-  @media (max-width: 700px) {
-    .card-grid { grid-template-columns: 1fr; }
-    .header { padding: 14px 18px; }
-    .main { padding: 16px 12px; }
-    .input-section { padding: 18px; }
-    .trust-dashboard { flex-direction: column; align-items: flex-start; }
-  }
-</style>
-</head>
-<body>
 
 <!-- 头部 -->
 <div class="header">
@@ -494,12 +436,6 @@
       <div class="content" id="r-summary"></div>
     </div>
 
-    <!-- 相邻法条发现 -->
-    <div class="adjacent-section" id="adjacent-section" style="display:none;">
-      <h3>📎 相邻法条 <span style="font-size:12px;font-weight:400;color:var(--text-dim);">（引用法条附近可能相关的条文）</span></h3>
-      <div id="adjacent-items"></div>
-    </div>
-
     <!-- 法条统计 -->
     <div class="validation pass" id="r-lawstats" style="font-size:13px; color:#8ccb8c;"></div>
 
@@ -517,12 +453,6 @@
 
     <!-- 验证 -->
     <div class="validation pass" id="validation"></div>
-
-    <!-- 关联判例 -->
-    <div class="related-section" id="related-section" style="display:none;">
-      <h3 class="collapse-toggle" onclick="this.classList.toggle('open');document.getElementById('related-body').classList.toggle('open')"><span class="arrow">▶</span> 🔗 关联判例 <span style="font-size:12px;font-weight:400;color:var(--text-dim);">（引用相同法条）</span></h3>
-      <div class="collapse-body" id="related-body"><div id="related-items"></div></div>
-    </div>
 
     <!-- 下载按钮 -->
     <div style="text-align:center; margin-top:8px;">
@@ -812,7 +742,7 @@ function 渲染结果(data) {
     ring.style.fontSize = "16px";
     document.getElementById("trust-sub").textContent = "";
     const breakdownItems = (t.明细 || []).map(d =>
-      `<span class="tbitem ${d.影响 > 0 ? 'up' : 'down'}">${d.影响 > 0 ? '▲' : '▼'} ${d.来源}</span>`
+      `<span class="tbitem ${d.方向 === '正面' ? 'up' : d.方向 === '负面' ? 'down' : ''}">${d.方向 === '正面' ? '▲' : d.方向 === '负面' ? '▼' : '—'} ${d.来源}</span>`
     ).join("");
     document.getElementById("trust-breakdown").innerHTML = breakdownItems
       ? `<span style="font-size:11px;color:var(--text-dim);margin-right:6px;">评分明细：</span>${breakdownItems}`
@@ -835,21 +765,6 @@ function 渲染结果(data) {
   document.getElementById("r-summary").textContent = a.总结 || "";
   document.getElementById("summary-card").style.display = a.总结 ? "block" : "none";
 
-  // 相邻法条
-  const adjSection = document.getElementById("adjacent-section");
-  const adjItems = document.getElementById("adjacent-items");
-  if (data.相邻法条 && data.相邻法条.length > 0) {
-    adjSection.style.display = "block";
-    adjItems.innerHTML = data.相邻法条.map(item => {
-      const cls = item.关系 === "前条" ? "before" : "after";
-      return `<div class="adjacent-item">
-        <span class="adj-tag ${cls}">${item.关系}</span>
-        <div><strong>${item.相邻条文}</strong> <span style="color:#484f58;">← ${item.引用法条}</span><br>${item.内容}</div>
-      </div>`;
-    }).join("");
-  } else {
-    adjSection.style.display = "none";
-  }
 
   // 法条统计
   const lawEl = document.getElementById("r-lawstats");
@@ -913,21 +828,6 @@ function 渲染结果(data) {
     v.innerHTML = data.验证.问题.map(p => `<div class="warn-item">${p}</div>`).join("");
   }
 
-  // 关联判例
-  const relatedSection = document.getElementById("related-section");
-  const relatedItems = document.getElementById("related-items");
-  if (data.关联判例 && data.关联判例.length > 0) {
-    relatedSection.style.display = "block";
-    relatedItems.innerHTML = data.关联判例.map(item =>
-      `<div class="related-item" onclick="加载历史详情('${item.文件名}')">
-        <div class="rel-name">${item.判例名}</div>
-        <div class="rel-meta">${item.日期} · 共同法条 ${item.共同法条.length} 条</div>
-        <div class="rel-laws">${item.共同法条.map(l => `<span>${l}</span>`).join("")}</div>
-      </div>`
-    ).join("");
-  } else {
-    relatedSection.style.display = "none";
-  }
 
   document.getElementById("results").classList.add("active");
   document.getElementById("results").scrollIntoView({ behavior: "smooth" });

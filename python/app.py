@@ -30,7 +30,6 @@ from skills.legal.verify_laws import (
     search_law_database,
     verify_law_citation_realness,
     verify_law_version,
-    find_adjacent_laws,
 )
 from skills.legal.trace_citations import 执行 as trace_citations
 from skills.legal.score_analysis import (
@@ -70,82 +69,7 @@ def 用户数据目录():
 # 九个分析维度函数 → 已迁移到 skills/legal/ 对应模块
 # 溯源对比/法条统计/法条库查询 → 已迁移到 skills/legal/verify_laws.py + trace_citations.py
 
-def 构建判例索引():
-    """扫描全部已存判例JSON，返回 {法条引用: [判例列表]} 的映射"""
-    索引 = {}
-    文件夹 = 用户数据目录()
-    if not os.path.exists(文件夹):
-        return 索引
-    for fname in os.listdir(文件夹):
-        if not fname.endswith(".json") or fname.startswith("limit_"):
-            continue
-        try:
-            with open(os.path.join(文件夹, fname), "r") as f:
-                d = json.load(f)
-            # 合并四维分析文字，用正则提取法条引用
-            分析文字 = " ".join([
-                d.get("核心争议", ""), d.get("推理链路", ""),
-                d.get("未回答问题", ""), d.get("可平移性", "")
-            ])
-            法条列表 = re.findall(
-                r'(?:《[^》]{2,20}》|[^\s，。；]{2,10}法)\s*第\s*\d+\s*(?:条(?:\s*之\s*[一二三四五六七八九十]+)?)?',
-                分析文字
-            )
-            for 法条 in set(法条列表):
-                if 法条 not in 索引:
-                    索引[法条] = []
-                索引[法条].append({
-                    "文件名": fname,
-                    "判例名": d.get("判例名", ""),
-                    "日期": d.get("日期", ""),
-                    "总结": d.get("总结", "")[:80]
-                })
-        except:
-            pass
-    return 索引
-
-def 查关联判例(判例文件名):
-    """根据一个判例引用的法条，找到其他引用相同法条的判例"""
-    文件夹 = 用户数据目录()
-    路径 = os.path.join(文件夹, 判例文件名)
-    if not os.path.exists(路径):
-        return []
-    try:
-        with open(路径, "r") as f:
-            d = json.load(f)
-        分析文字 = " ".join([
-            d.get("核心争议", ""), d.get("推理链路", ""),
-            d.get("未回答问题", ""), d.get("可平移性", "")
-        ])
-        本文法条 = set(re.findall(
-            r'(?:《[^》]{2,20}》|[^\s，。；]{2,10}法)\s*第\s*\d+\s*(?:条(?:\s*之\s*[一二三四五六七八九十]+)?)?',
-            分析文字
-        ))
-    except:
-        return []
-
-    if not 本文法条:
-        return []
-
-    索引 = 构建判例索引()
-    关联集合 = {}  # 文件名 → {判例名, 日期, 共同法条列表}
-    for 法条 in 本文法条:
-        for 判例 in 索引.get(法条, []):
-            if 判例["文件名"] == 判例文件名:
-                continue  # 不包含自己
-            if 判例["文件名"] not in 关联集合:
-                关联集合[判例["文件名"]] = {
-                    "判例名": 判例["判例名"],
-                    "日期": 判例["日期"],
-                    "文件名": 判例["文件名"],
-                    "总结": 判例["总结"],
-                    "共同法条": []
-                }
-            关联集合[判例["文件名"]]["共同法条"].append(法条)
-
-    # 按共同法条数量排序，最多的在前面
-    结果 = sorted(关联集合.values(), key=lambda x: len(x["共同法条"]), reverse=True)
-    return 结果[:10]
+# 构建判例索引 / 查关联判例 → 已移除。法条库仅1个文件，关联功能无数据支撑。
 
 # 法条版本校验/风险列表/可信度评分 → 已迁移到 skills/legal/verify_laws.py + score_analysis.py
 
@@ -236,6 +160,14 @@ def 消耗次数(uid, ip):
 def 首页():
     return render_template("index.html")
 
+@app.route("/report")
+def 报告页():
+    return render_template("report.html")
+
+@app.route("/cover")
+def 封面页():
+    return render_template("cover.html")
+
 @app.route("/analyze", methods=["POST"])
 def 分析路由():
     """编排层：按顺序调度技能库中的分析技能，组装JSON返回"""
@@ -309,8 +241,6 @@ def 分析路由():
 
     # ── 组装返回 ──
     剩余 = 剩余次数查询(uid, ip)
-    # 法条库数据不足，暂禁用相邻法条（扩库后改回 find_adjacent_laws(法条库目录, 法条对照)）
-    相邻法条 = []
     可信度 = compute_trust_score(验证, 法条对照, 溯源, 法条真实性警告)
     风险列表 = generate_risk_list(验证, 法条对照, 溯源, 法条真实性警告)
 
@@ -333,7 +263,6 @@ def 分析路由():
         },
         "溯源": 溯源,
         "法条对照": 法条对照,
-        "相邻法条": 相邻法条,
         "验证": 验证,
         "可信度": 可信度,
         "风险列表": 风险列表,
@@ -400,20 +329,12 @@ def 详情路由(fname):
             },
             "溯源": None,
             "法条对照": None,
-            "相邻法条": [],
             "验证": {"通过": True, "问题": [], "法条统计": "历史存档数据"},
             "可信度": None,
             "风险列表": [],
-            # 判例存量不足，暂禁用关联（积累后改回 查关联判例(fname)）
-            "关联判例": []
         })
     except:
         return jsonify({"error": "读取失败"}), 500
-
-@app.route("/related/<fname>")
-def 关联路由(fname):
-    """返回与指定判例引用相同法条的其他判例"""
-    return jsonify(查关联判例(fname))
 
 @app.route("/download", methods=["POST"])
 def 下载路由():
