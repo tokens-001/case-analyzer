@@ -65,12 +65,8 @@
   .features {
     margin-bottom: 14px; font-size: 12px;
   }
-  .features-header { margin-bottom: 4px; }
   .features-title { font-weight: 700; color: var(--navy); }
-  .features-row { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
-  .features-row:first-of-type { margin-top: 0; }
-  .features-flow { font-size: 12px; color: var(--navy); margin-bottom: 2px; }
-  .features-flow span { font-weight: 500; }
+  .features-desc { color: var(--text-dim); margin-left: 8px; }
 
 
   .main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
@@ -320,7 +316,7 @@
     <div class="header-logo">⚖️</div>
     <div class="header-text">
       <h1>判例助手<span style="font-size:11px;color:var(--amber);font-weight:400;">（测试版）</span></h1>
-      <div class="tagline" id="tagline">还原法院裁判逻辑，而非简单总结判决书</div>
+      <div class="tagline" id="tagline">还原法院裁判逻辑</div>
     </div>
   </div>
   <div class="mode-switch">
@@ -340,26 +336,20 @@
   <!-- 输入区 -->
   <div class="input-section">
     <div class="features" id="features-judgment">
-      <div class="features-header"><span class="features-title">法院推理拆解（8维）</span></div>
-      <div class="features-row">还原法院如何得出结论</div>
-      <div class="features-flow">① 结构化摘要 → ② 核心争议 → ③ 推理链路 → ④ 法条适用精析</div>
-      <div class="features-row">审查裁判是否充分</div>
-      <div class="features-flow">⑤ 对立解释路径 → ⑥ 论证完整性检查 → ⑦ 程序问题识别 → ⑧ 未回答问题</div>
+      <span class="features-title">法院推理拆解（8维）</span>
+      <span class="features-desc">还原裁判逻辑 · 审查裁判质量</span>
     </div>
     <div class="features" id="features-case" style="display:none">
-      <div class="features-header"><span class="features-title">律师对抗分析（5维）</span></div>
-      <div class="features-row">评估你的处境</div>
-      <div class="features-flow">① 法律关系识别 → ② 事实与证据评估 → ③ 对抗路径分析</div>
-      <div class="features-row">制定行动策略</div>
-      <div class="features-flow">④ 风险推演 → ⑤ 行动建议</div>
+      <span class="features-title">律师对抗分析（5维）</span>
+      <span class="features-desc">评估风险 · 预演诉讼路径</span>
     </div>
-    <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">支持判决书、裁定书、仲裁裁决 | 建议500字以上</div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">支持判决书、裁定书、仲裁裁决 · 建议500字以上</div>
     <div class="input-row">
       <label id="caseNameLabel">判例名称</label>
       <input type="text" id="caseName" placeholder="可留空，AI自动提取，例：张某诉李某合同纠纷案">
     </div>
 
-    <textarea id="caseText" placeholder="粘贴判决书全文，或点击下方上传文件……&#10;支持判决书、裁定书、仲裁裁决&#10;建议正文 500 字以上"></textarea>
+    <textarea id="caseText" placeholder="粘贴判决书全文，或点击下方上传文件……"></textarea>
 
     <div class="btn-row">
       <button class="btn btn-primary" onclick="开始分析()">开始分析</button>
@@ -548,8 +538,8 @@ function 切换模式(mode) {
   document.getElementById('mode-judgment').classList.toggle('active', mode === 'judgment');
   document.getElementById('mode-case').classList.toggle('active', mode === 'case');
   const taglines = {
-    judgment: '还原法院裁判逻辑，而非简单总结判决书',
-    case: '预演诉讼路径，评估风险与应对策略'
+    judgment: '还原裁判逻辑 · 审查裁判质量',
+    case: '评估风险 · 预演诉讼路径'
   };
   document.getElementById('tagline').textContent = taglines[mode];
   document.getElementById('features-judgment').style.display = mode === 'case' ? 'none' : 'flex';
