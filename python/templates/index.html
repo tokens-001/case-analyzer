@@ -63,11 +63,15 @@
   .mode-btn:hover:not(.active) { color: #fff; border-color: rgba(255,255,255,.25); }
 
   .features {
-    display: flex; gap: 12px; flex-wrap: wrap;
-    margin-bottom: 16px; padding-bottom: 14px;
-    border-bottom: 1px solid var(--border);
+    background: #eef2f7; border: 1px solid #d6dde8; border-radius: 6px;
+    padding: 14px 16px; margin-bottom: 16px;
   }
-  .features span { font-size: 11px; color: var(--navy); font-weight: 600; }
+  .features-title { font-size: 11px; font-weight: 700; color: var(--navy); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .features-list { display: flex; gap: 8px; flex-wrap: wrap; }
+  .features-list span {
+    font-size: 11px; color: var(--navy); font-weight: 600;
+    background: rgba(30,58,95,.08); padding: 3px 10px; border-radius: 3px;
+  }
 
 
   .main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
@@ -335,13 +339,20 @@
   <!-- 输入区 -->
   <div class="input-section">
     <div class="features" id="features-judgment">
-      <span>✓ 法条真实性校验</span><span>✓ 溯源越界检测</span>
-      <span>✓ 法院推理链拆解</span><span>✓ 对立解释路径分析</span>
+      <div class="features-title">分析框架（8维）</div>
+      <div class="features-list">
+        <span>结构化摘要</span><span>核心争议</span><span>推理链路</span><span>法条适用精析</span>
+        <span>对立解释路径</span><span>论证完整性检查</span><span>程序问题识别</span><span>未回答问题</span>
+      </div>
     </div>
     <div class="features" id="features-case" style="display:none">
-      <span>✓ 法律关系识别</span><span>✓ 事实与证据评估</span>
-      <span>✓ 对抗路径分析</span><span>✓ 风险推演与行动建议</span>
+      <div class="features-title">分析框架（5维）</div>
+      <div class="features-list">
+        <span>法律关系识别</span><span>事实与证据评估</span><span>对抗路径分析</span>
+        <span>风险推演</span><span>行动建议</span>
+      </div>
     </div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">支持判决书、裁定书、仲裁裁决 | 建议500字以上</div>
     <div class="input-row">
       <label id="caseNameLabel">判例名称</label>
       <input type="text" id="caseName" placeholder="可留空，AI自动提取，例：张某诉李某合同纠纷案">
@@ -923,6 +934,10 @@ function 渲染历史列表(items) {
   const container = document.getElementById("historyItems");
   if (items.length === 0) {
     container.innerHTML = "<div style='color:#6b7280;font-size:13px;padding:12px;'>暂无匹配记录</div>";
+    return;
+  }
+  if (items.length === 0) {
+    container.innerHTML = "<div style='color:var(--text-dim);font-size:13px;padding:12px 0;'>暂无历史记录，分析结果将在此显示</div>";
     return;
   }
   container.innerHTML = items.map(item =>
