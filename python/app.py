@@ -500,7 +500,9 @@ def 反馈数据路由():
                 全部.append(d)
             except:
                 pass
-    return jsonify({"总数": len(全部), "反馈": 全部[-50:]})
+    resp = jsonify({"总数": len(全部), "反馈": 全部[-50:]})
+    resp.headers["Content-Type"] = "application/json; charset=utf-8"
+    return resp
 
 
 if __name__ == "__main__":
