@@ -65,6 +65,8 @@
   .mode-btn.active { background: var(--blue); color: #fff; }
   .mode-btn:hover:not(.active) { color: var(--text); background: var(--surface); }
 
+  .input-hint { font-size: 11px; color: var(--text-dim); }
+
   /* ---- 主布局 ---- */
   .main { max-width: 1120px; margin: 0 auto; padding: 32px 24px; }
 
@@ -396,7 +398,8 @@
   <div class="input-section">
     <div class="input-row">
       <label id="caseNameLabel">判例名称</label>
-      <input type="text" id="caseName" placeholder="例：张某诉李某合同纠纷案（留空则AI自动生成）">
+      <input type="text" id="caseName" placeholder="例：张某诉李某合同纠纷案">
+      <span class="input-hint">💡 可留空，AI 自动从内容提取名称</span>
     </div>
 
     <textarea id="caseText" placeholder="在此粘贴判例全文……"></textarea>
@@ -642,10 +645,10 @@ function 切换模式(mode) {
   document.getElementById('tagline').textContent = taglines[mode];
   if (mode === 'case') {
     document.getElementById('caseNameLabel').textContent = '纠纷名称';
-    document.getElementById('caseName').placeholder = '例：合伙纠纷、劳动争议';
+    document.getElementById('caseName').placeholder = '例：合伙纠纷、劳动争议（留空自动生成）';
   } else {
     document.getElementById('caseNameLabel').textContent = '判例名称';
-    document.getElementById('caseName').placeholder = '例：张某诉李某合同纠纷案（留空则AI自动生成）';
+    document.getElementById('caseName').placeholder = '例：张某诉李某合同纠纷案（留空自动生成）';
   }
 }
 
