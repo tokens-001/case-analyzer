@@ -113,16 +113,16 @@
 
   .btn-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .btn {
-    padding: 10px 22px; border: none; border-radius: 8px;
-    font-size: 13px; font-weight: 600; cursor: pointer;
-    transition: all .2s;
+    padding: 10px 20px; border: 1.5px solid transparent; border-radius: 10px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: all .15s;
   }
-  .btn:hover { opacity: 0.9; }
-  .btn-primary { background: var(--navy); color: #fff; }
-  .btn-secondary { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
-  .btn-secondary:hover { border-color: var(--text-dim); color: var(--text); }
-  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); padding: 10px 16px; font-size: 12px; }
-  .btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
+  .btn-primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .btn-primary:hover { background: #152d4a; }
+  .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .btn-secondary:hover { border-color: var(--navy); color: var(--navy); }
+  .btn-ghost { background: transparent; color: var(--text-dim); border-color: transparent; padding: 10px 14px; font-size: 13px; }
+  .btn-ghost:hover { color: var(--text); }
 
   .file-upload { position: relative; }
   .file-upload input[type="file"] { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -354,11 +354,11 @@
     <div class="btn-row">
       <button class="btn btn-primary" onclick="开始分析()">开始分析</button>
       <span class="file-upload">
-        <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">📂 上传文件</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">上传文件</button>
         <input type="file" id="fileInput" accept=".txt" onchange="读文件(this)">
       </span>
       <button class="btn btn-ghost" onclick="清空()">清空</button>
-      <span id="remaining" style="margin-left:auto; font-size:12px; color:#6b7280;"></span>
+      <span id="remaining" style="margin-left:auto; font-size:13px; color:var(--text-dim);"></span>
     </div>
   </div>
 
