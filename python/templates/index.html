@@ -63,11 +63,12 @@
   .mode-btn:hover:not(.active) { color: #fff; border-color: rgba(255,255,255,.25); }
 
   .features {
-    margin-bottom: 14px; font-size: 12px; color: var(--text-dim);
+    margin-bottom: 14px; font-size: 12px;
   }
-  .features-title { font-weight: 700; color: var(--navy); margin-right: 6px; }
-  .features-flow { color: var(--navy); }
-  .features-flow span { font-weight: 500; }
+  .features-header { margin-bottom: 4px; }
+  .features-title { font-weight: 700; color: var(--navy); }
+  .features-row { color: var(--navy); line-height: 1.8; }
+  .features-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-right: 6px; }
 
 
   .main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
@@ -267,7 +268,7 @@
   /* ---- 历史 ---- */
   .history-section {
     background: #eef2f7; border: 1px solid #d6dde8; border-radius: 8px;
-    padding: 14px 16px; margin-bottom: 20px;
+    padding: 10px 16px; margin-bottom: 20px;
   }
   .history-toggle {
     display: flex; align-items: center; gap: 4px;
@@ -337,16 +338,14 @@
   <!-- 输入区 -->
   <div class="input-section">
     <div class="features" id="features-judgment">
-      <span class="features-title">法院推理拆解（8维）</span>
-      <span class="features-flow">① 结构化摘要 → ② 核心争议 → ③ 推理链路 → ④ 法条适用精析</span>
-      <span style="margin:0 8px;color:var(--border);">|</span>
-      <span class="features-flow">⑤ 对立解释路径 → ⑥ 论证完整性检查 → ⑦ 程序问题识别 → ⑧ 未回答问题</span>
+      <div class="features-header"><span class="features-title">法院推理拆解（8维）</span></div>
+      <div class="features-row"><span class="features-label">还原裁判</span> ① 结构化摘要 → ② 核心争议 → ③ 推理链路 → ④ 法条适用精析</div>
+      <div class="features-row"><span class="features-label">审查裁判</span> ⑤ 对立解释路径 → ⑥ 论证完整性检查 → ⑦ 程序问题识别 → ⑧ 未回答问题</div>
     </div>
     <div class="features" id="features-case" style="display:none">
-      <span class="features-title">律师对抗分析（5维）</span>
-      <span class="features-flow">① 法律关系识别 → ② 事实与证据评估 → ③ 对抗路径分析</span>
-      <span style="margin:0 8px;color:var(--border);">|</span>
-      <span class="features-flow">④ 风险推演 → ⑤ 行动建议</span>
+      <div class="features-header"><span class="features-title">律师对抗分析（5维）</span></div>
+      <div class="features-row"><span class="features-label">评估处境</span> ① 法律关系识别 → ② 事实与证据评估 → ③ 对抗路径分析</div>
+      <div class="features-row"><span class="features-label">制定策略</span> ④ 风险推演 → ⑤ 行动建议</div>
     </div>
     <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">支持判决书、裁定书、仲裁裁决 | 建议500字以上</div>
     <div class="input-row">
@@ -518,7 +517,7 @@
   <!-- 历史记录 -->
   <div class="history-section">
     <div class="history-toggle" onclick="切换历史()">
-      <span id="historyArrow">▶</span> 📜 历史分析记录 <span id="historyCount" style="font-weight:400;color:var(--text-dim);"></span>
+      <span id="historyArrow">▶</span> 历史分析记录 <span id="historyCount" style="font-weight:400;color:var(--text-dim);"></span>
     </div>
     <div class="history-list" id="historyList">
       <input type="text" id="searchInput" placeholder="搜索历史记录…"
