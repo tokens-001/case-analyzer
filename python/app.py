@@ -185,6 +185,7 @@ def 分析路由():
     判例名 = data.get("name", "").strip()
     判例 = data.get("text", "").strip()
     案发日期 = data.get("case_date", "").strip()
+    分析模式 = data.get("mode", "judgment")  # "judgment"=判决书 "case"=案情分析
 
     if not 判例名:
         return jsonify({"error": "请输入判例名称"}), 400
@@ -224,7 +225,10 @@ def 分析路由():
 
     # ── 第四轮：本地校验层（不调API，全部并行）──
     全部分析 = [分析1, 分析2, 分析3, 分析4, 反例, 论证链, 证据缺失, 相反法条]
-    溯源 = trace_citations(判例, *全部分析)
+    if 分析模式 == "case":
+        溯源 = {"warning": "案情模式不适用溯源校验（无判决原文段落可对标）"}
+    else:
+        溯源 = trace_citations(判例, *全部分析)
     法条对照 = search_law_database(法条库目录, *全部分析)
     法条真实性警告 = verify_law_citation_realness(法条库目录, *全部分析)
     验证 = validate_analysis_quality(分析1, 分析2, 分析3, 分析4, 总结, count_law_citations)

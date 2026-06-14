@@ -56,6 +56,15 @@
   .header-text h1 { font-size: 19px; font-weight: 700; color: var(--text-bright); letter-spacing: -0.3px; }
   .header-text .tagline { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
 
+  .mode-switch { display: flex; gap: 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .mode-btn {
+    padding: 7px 16px; font-size: 12px; font-weight: 600;
+    background: var(--surface2); color: var(--text-dim);
+    border: none; cursor: pointer; transition: all .2s;
+  }
+  .mode-btn.active { background: var(--blue); color: #fff; }
+  .mode-btn:hover:not(.active) { color: var(--text); background: var(--surface); }
+
   /* ---- 主布局 ---- */
   .main { max-width: 1120px; margin: 0 auto; padding: 32px 24px; }
 
@@ -372,8 +381,12 @@
     <div class="header-logo">⚖️</div>
     <div class="header-text">
       <h1>判例助手</h1>
-      <div class="tagline">AI驱动的判例分析 · 溯源校验 + 法条版本核对</div>
+      <div class="tagline" id="tagline">AI驱动的判例分析 · 溯源校验 + 法条版本核对</div>
     </div>
+  </div>
+  <div class="mode-switch">
+    <button class="mode-btn active" id="mode-judgment" onclick="切换模式('judgment')">判决书</button>
+    <button class="mode-btn" id="mode-case" onclick="切换模式('case')">案情分析</button>
   </div>
 </div>
 
@@ -617,6 +630,20 @@
 // 前端交互逻辑
 // ============================================================
 
+// ---- 模式切换 ----
+var 当前模式 = 'judgment';
+
+function 切换模式(mode) {
+  当前模式 = mode;
+  document.getElementById('mode-judgment').classList.toggle('active', mode === 'judgment');
+  document.getElementById('mode-case').classList.toggle('active', mode === 'case');
+  const taglines = {
+    judgment: 'AI驱动的判例分析 · 溯源校验 + 法条版本核对',
+    case: '案情法律分析 · 争议焦点 + 法条依据 + 风险评估'
+  };
+  document.getElementById('tagline').textContent = taglines[mode];
+}
+
 // ---- 页面加载：查剩余次数 ----
 async function 刷新剩余次数() {
   try {
@@ -685,7 +712,7 @@ async function 开始分析() {
     const response = await fetch("/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name, text: text, case_date: caseDate })
+      body: JSON.stringify({ name: name, text: text, case_date: caseDate, mode: 当前模式 })
     });
 
     const data = await response.json();
