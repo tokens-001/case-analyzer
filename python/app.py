@@ -37,7 +37,6 @@ from skills.legal.verify_laws import (
     count_law_citations,
     search_law_database,
     verify_law_citation_realness,
-    verify_law_version,
 )
 from skills.legal.trace_citations import 执行 as trace_citations
 from skills.legal.score_analysis import (
