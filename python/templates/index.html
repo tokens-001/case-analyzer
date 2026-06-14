@@ -398,7 +398,7 @@
   <!-- 输入区 -->
   <div class="input-section">
     <div class="input-row">
-      <label>判例名称</label>
+      <label id="caseNameLabel">判例名称</label>
       <input type="text" id="caseName" placeholder="例：张某诉李某合同纠纷案" required>
       <label style="min-width:60px;">案发日期</label>
       <input type="text" id="caseDate" style="flex:0 0 160px;" placeholder="2023年5月 / 2024" title="判决书模式用于校验法条版本，案情模式可不填">
@@ -646,17 +646,21 @@ function 切换模式(mode) {
     case: '案情法律分析 · 争议焦点 + 法条依据 + 风险评估'
   };
   document.getElementById('tagline').textContent = taglines[mode];
-  const dateInput = document.getElementById('caseDate');
+  // 名称栏随模式切换
   if (mode === 'case') {
-    dateInput.placeholder = '可不填';
-    dateInput.removeAttribute('required');
+    document.getElementById('caseNameLabel').textContent = '纠纷名称';
+    document.getElementById('caseName').placeholder = '例：合伙纠纷、劳动争议';
+    document.getElementById('caseDate').placeholder = '可不填';
+    document.getElementById('caseDate').removeAttribute('required');
     document.getElementById('fuzzyLabel').style.display = 'none';
     document.getElementById('fuzzyDate').checked = false;
   } else {
-    dateInput.placeholder = '2023年5月 / 2024';
+    document.getElementById('caseNameLabel').textContent = '判例名称';
+    document.getElementById('caseName').placeholder = '例：张某诉李某合同纠纷案';
+    document.getElementById('caseDate').placeholder = '2023年5月 / 2024';
     document.getElementById('fuzzyLabel').style.display = '';
     if (!document.getElementById('fuzzyDate').checked) {
-      dateInput.setAttribute('required', '');
+      document.getElementById('caseDate').setAttribute('required', '');
     }
   }
 }
