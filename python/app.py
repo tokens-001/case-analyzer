@@ -47,6 +47,7 @@ from skills.legal.score_analysis import (
 from skills.legal._base import 智能分段
 
 app = Flask(__name__)
+app.config["JSON_AS_ASCII"] = False
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24).hex()
 
 @app.after_request
