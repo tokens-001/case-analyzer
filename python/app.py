@@ -507,6 +507,49 @@ def 反馈数据路由():
     )
 
 
+@app.route("/dashboard")
+def 后台面板():
+    """访问量统计面板"""
+    import collections
+    分析总数 = 0
+    判决书数 = 0
+    案情数 = 0
+    用户集合 = set()
+    if os.path.exists(数据根目录):
+        for uid in os.listdir(数据根目录):
+            用户集合.add(uid)
+            user_dir = os.path.join(数据根目录, uid)
+            for fname in os.listdir(user_dir):
+                if fname.endswith(".json") and not fname.startswith("limit"):
+                    分析总数 += 1
+                    try:
+                        with open(os.path.join(user_dir, fname)) as f:
+                            d = json.load(f)
+                        if d.get("模式") == "案情分析":
+                            案情数 += 1
+                        else:
+                            判决书数 += 1
+                    except:
+                        pass
+    反馈数 = 0
+    if os.path.exists(数据根目录):
+        for uid in os.listdir(数据根目录):
+            fb_dir = os.path.join(数据根目录, uid, "feedback")
+            if os.path.isdir(fb_dir):
+                反馈数 += len([f for f in os.listdir(fb_dir) if f.endswith(".json")])
+    from flask import Response
+    return Response(
+        json.dumps({
+            "分析总数": 分析总数,
+            "判决书分析": 判决书数,
+            "案情分析": 案情数,
+            "用户数": len(用户集合),
+            "反馈数": 反馈数,
+        }, ensure_ascii=False, indent=2),
+        mimetype="application/json; charset=utf-8"
+    )
+
+
 if __name__ == "__main__":
     print("判例助手网页版已启动 → http://127.0.0.1:5050")
     app.run(debug=True, host="0.0.0.0", port=5050)
