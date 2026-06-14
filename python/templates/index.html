@@ -47,7 +47,6 @@
     font-size: 18px; color: #fff;
   }
   .header-text h1 { font-size: 18px; font-weight: 700; color: #fff; font-family: "Noto Serif SC", "Songti SC", "STSong", serif; }
-  .header-text .tagline { font-size: 11px; color: rgba(255,255,255,.65); margin-top: 1px; }
 
   .mode-switch { display: flex; gap: 4px; }
   .mode-btn {
@@ -316,7 +315,6 @@
     <div class="header-logo">⚖️</div>
     <div class="header-text">
       <h1>判例助手<span style="font-size:11px;color:var(--amber);font-weight:400;">（测试版）</span></h1>
-      <div class="tagline" id="tagline">还原法院裁判逻辑</div>
     </div>
   </div>
   <div class="mode-switch">
@@ -537,11 +535,6 @@ function 切换模式(mode) {
   当前模式 = mode;
   document.getElementById('mode-judgment').classList.toggle('active', mode === 'judgment');
   document.getElementById('mode-case').classList.toggle('active', mode === 'case');
-  const taglines = {
-    judgment: '还原裁判逻辑 · 审查裁判质量',
-    case: '评估风险 · 预演诉讼路径'
-  };
-  document.getElementById('tagline').textContent = taglines[mode];
   document.getElementById('features-judgment').style.display = mode === 'case' ? 'none' : 'flex';
   document.getElementById('features-case').style.display = mode === 'case' ? 'flex' : 'none';
   if (mode === 'case') {
