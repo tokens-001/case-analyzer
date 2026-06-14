@@ -49,14 +49,25 @@
   .header-text h1 { font-size: 18px; font-weight: 700; color: #fff; font-family: "Noto Serif SC", "Songti SC", "STSong", serif; }
   .header-text .tagline { font-size: 11px; color: rgba(255,255,255,.65); margin-top: 1px; }
 
-  .mode-switch { display: flex; gap: 0; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,.25); }
+  .mode-switch { display: flex; gap: 4px; }
   .mode-btn {
-    padding: 6px 14px; font-size: 11px; font-weight: 600;
-    background: transparent; color: rgba(255,255,255,.65);
-    border: none; cursor: pointer; transition: all .2s;
+    padding: 8px 16px; font-size: 12px; font-weight: 600;
+    background: transparent; color: rgba(255,255,255,.55);
+    border: 1px solid rgba(255,255,255,.15); border-radius: 6px;
+    cursor: pointer; transition: all .2s; text-align: left;
+    display: flex; flex-direction: column; gap: 2px;
   }
-  .mode-btn.active { background: rgba(255,255,255,.2); color: #fff; }
-  .mode-btn:hover:not(.active) { color: #fff; background: rgba(255,255,255,.1); }
+  .mode-btn .mode-label { font-size: 13px; }
+  .mode-btn .mode-desc { font-size: 10px; font-weight: 400; opacity: 0.7; }
+  .mode-btn.active { background: rgba(255,255,255,.15); color: #fff; border-color: rgba(255,255,255,.3); }
+  .mode-btn:hover:not(.active) { color: #fff; border-color: rgba(255,255,255,.25); }
+
+  .features {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 16px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .features span { font-size: 11px; color: var(--navy); font-weight: 600; }
 
 
   .main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
@@ -85,7 +96,7 @@
   .input-row input[type="text"]:focus { outline: none; border-color: var(--navy); }
 
   textarea {
-    width: 100%; height: 240px;
+    width: 100%; height: 180px;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -256,21 +267,28 @@
   /* ---- 历史 ---- */
   .history-toggle {
     display: flex; align-items: center; gap: 4px;
-    cursor: pointer; font-size: 12px; color: var(--text-dim);
-    margin-bottom: 14px; user-select: none; padding: 8px 0;
+    cursor: pointer; font-size: 13px; color: var(--text-dim);
+    margin-bottom: 12px; user-select: none; padding: 8px 0;
     transition: color .2s;
   }
   .history-toggle:hover { color: var(--text); }
   .history-list { display: none; }
-  .history-list.active { display: block; }
+  .history-list.active { display: block; margin-bottom: 24px; }
   .history-item {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 4px; padding: 14px 18px; margin-bottom: 6px;
-    cursor: pointer; transition: all .2s;
+    border-radius: 6px; padding: 14px 18px; margin-bottom: 8px;
+    cursor: pointer; transition: border-color .2s;
+    display: flex; justify-content: space-between; align-items: center;
   }
   .history-item:hover { border-color: var(--navy); }
-  .history-item .h-name { font-size: 13px; color: var(--text); font-weight: 600; }
-  .history-item .h-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .history-item .h-name { font-size: 14px; color: var(--text); font-weight: 600; }
+  .history-item .h-meta { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+  .history-search { margin-bottom: 10px; }
+  .history-search input {
+    width: 100%; padding: 8px 12px; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: var(--surface); color: var(--text);
+  }
 
   /* ---- 折叠 ---- */
   .collapse-toggle { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; }
@@ -301,8 +319,14 @@
     </div>
   </div>
   <div class="mode-switch">
-    <button class="mode-btn active" id="mode-judgment" onclick="切换模式('judgment')">判决书</button>
-    <button class="mode-btn" id="mode-case" onclick="切换模式('case')">案情分析</button>
+    <button class="mode-btn active" id="mode-judgment" onclick="切换模式('judgment')">
+      <span class="mode-label">判决书分析</span>
+      <span class="mode-desc">拆解法院裁判逻辑</span>
+    </button>
+    <button class="mode-btn" id="mode-case" onclick="切换模式('case')">
+      <span class="mode-label">案情分析</span>
+      <span class="mode-desc">评估风险与诉讼路径</span>
+    </button>
   </div>
 </div>
 
@@ -310,21 +334,29 @@
 
   <!-- 输入区 -->
   <div class="input-section">
+    <div class="features" id="features-judgment">
+      <span>✓ 法条真实性校验</span><span>✓ 溯源越界检测</span>
+      <span>✓ 法院推理链拆解</span><span>✓ 对立解释路径分析</span>
+    </div>
+    <div class="features" id="features-case" style="display:none">
+      <span>✓ 法律关系识别</span><span>✓ 事实与证据评估</span>
+      <span>✓ 对抗路径分析</span><span>✓ 风险推演与行动建议</span>
+    </div>
     <div class="input-row">
       <label id="caseNameLabel">判例名称</label>
-      <input type="text" id="caseName" placeholder="可留空，AI自动提取名称，例：张某诉李某合同纠纷案">
+      <input type="text" id="caseName" placeholder="可留空，AI自动提取，例：张某诉李某合同纠纷案">
     </div>
 
-    <textarea id="caseText" placeholder="在此粘贴判例全文……"></textarea>
+    <textarea id="caseText" placeholder="在此粘贴判决书全文，或点击下方上传文件……"></textarea>
 
     <div class="btn-row">
       <button class="btn btn-primary" onclick="开始分析()">开始分析</button>
       <span class="file-upload">
-        <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">📂 从文件读取</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">📂 上传文件</button>
         <input type="file" id="fileInput" accept=".txt" onchange="读文件(this)">
       </span>
       <button class="btn btn-ghost" onclick="清空()">清空</button>
-      <span id="remaining" style="margin-left:auto; font-size:13px; color:#6b7280;"></span>
+      <span id="remaining" style="margin-left:auto; font-size:12px; color:#6b7280;"></span>
     </div>
   </div>
 
@@ -508,12 +540,14 @@ function 切换模式(mode) {
     case: '律师视角 · 法律关系 → 证据评估 → 对抗分析 → 风险推演'
   };
   document.getElementById('tagline').textContent = taglines[mode];
+  document.getElementById('features-judgment').style.display = mode === 'case' ? 'none' : 'flex';
+  document.getElementById('features-case').style.display = mode === 'case' ? 'flex' : 'none';
   if (mode === 'case') {
     document.getElementById('caseNameLabel').textContent = '纠纷名称';
     document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：合伙纠纷';
   } else {
     document.getElementById('caseNameLabel').textContent = '判例名称';
-    document.getElementById('caseName').placeholder = '可留空，AI自动提取名称，例：张某诉李某合同纠纷案';
+    document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：张某诉李某合同纠纷案';
   }
 }
 
@@ -522,8 +556,11 @@ async function 刷新剩余次数() {
   try {
     const resp = await fetch("/remaining");
     const data = await resp.json();
-    document.getElementById("remaining").textContent =
-      `今日剩余 ${data.剩余}/${data.上限} 次`;
+    if (data.上限 >= 9999) {
+      document.getElementById("remaining").textContent = '测试版 · 不限次';
+    } else {
+      document.getElementById("remaining").textContent = `今日剩余 ${data.剩余}/${data.上限} 次`;
+    }
     if (data.剩余 === 0) {
       document.getElementById("remaining").style.color = "#e05d5d";
     }
@@ -607,10 +644,11 @@ function 渲染结果(data) {
 
   // 更新剩余次数
   if (data.剩余次数 !== undefined) {
-    document.getElementById("remaining").textContent =
-      `今日剩余 ${data.剩余次数}/${data.今日上限} 次`;
-    if (data.剩余次数 === 0) {
-      document.getElementById("remaining").style.color = "#e05d5d";
+    if (data.今日上限 >= 9999) {
+      document.getElementById("remaining").textContent = '测试版 · 不限次';
+    } else {
+      document.getElementById("remaining").textContent = `今日剩余 ${data.剩余次数}/${data.今日上限} 次`;
+      if (data.剩余次数 === 0) document.getElementById("remaining").style.color = "#dc2626";
     }
   }
 
