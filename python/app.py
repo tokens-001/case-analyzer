@@ -48,8 +48,14 @@ from skills.legal.score_analysis import (
 from skills.legal._base import 智能分段
 
 app = Flask(__name__)
-# secret_key: 生产环境从环境变量读，本地开发自动生成
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24).hex()
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "https://123456zjx.pythonanywhere.com"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
 
 # 项目根目录：app.py 在 python/ 里，往上一级就是项目根
 项目根 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -211,41 +217,69 @@ def 分析路由():
     if len(判例) < 50:
         return jsonify({"error": "判例文字太短（少于50字），请输入完整判例内容"}), 400
 
-    if 分析模式 == "case":
-        # ══════ 案情模式：五维分析链（律师视角） ══════
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            f1 = executor.submit(identify_relationship.执行, 判例, api_key)
-            f2 = executor.submit(assess_facts_evidence.执行, 判例, api_key)
-            f3 = executor.submit(analyze_opposing_paths.执行, 判例, api_key)
-            f4 = executor.submit(project_risks.执行, 判例, api_key)
-            法律关系 = f1.result()
-            事实证据 = f2.result()
-            对抗路径 = f3.result()
-            风险推演 = f4.result()
-        行动建议 = suggest_actions.执行(判例, api_key)
-        总结 = summarize_case.执行(判例, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, api_key)
-        全部分析 = [法律关系, 事实证据, 对抗路径, 风险推演, 行动建议]
-    else:
-        # ══════ 判决书模式：八维分析链（法院视角） ══════
-        结构 = structure_summary.执行(判例, api_key)
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            f1 = executor.submit(extract_dispute.执行, 判例, api_key)
-            f2 = executor.submit(extract_reasoning.执行, 判例, api_key)
-            f3 = executor.submit(find_unanswered.执行, 判例, api_key)
-            争议 = f1.result()
-            推理 = f2.result()
-            未答 = f3.result()
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            f4 = executor.submit(analyze_law_application.执行, 判例, api_key)
-            f5 = executor.submit(find_opposing_paths.执行, 判例, api_key)
-            f6 = executor.submit(audit_argument_integrity.执行, 判例, api_key)
-            f7 = executor.submit(identify_procedural_issues.执行, 判例, api_key)
-            法条精析 = f4.result()
-            对立路径 = f5.result()
-            论证检查 = f6.result()
-            程序问题 = f7.result()
-        总结 = 结构  # 结构化摘要即判决书模式的"总结"
-        全部分析 = [争议, 推理, 未答, 法条精析, 对立路径, 论证检查, 程序问题]
+    # 输入类型检测：非判决书/案情文本拒绝分析
+    if 分析模式 == "judgment":
+        judgment_keywords = ["法院", "判决", "原告", "被告", "裁定", "本院", "审理", "诉称", "辩称"]
+        if not any(kw in 判例 for kw in judgment_keywords[:4]):
+            return jsonify({"error": "输入文本不像判决书。判决书通常包含'原告''被告''法院'等主体信息。如确为判决书请继续；如为案情咨询请切换至'案情分析'模式。"}), 400
+
+    try:
+        if 分析模式 == "case":
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                futures = {
+                    "法律关系识别": executor.submit(identify_relationship.执行, 判例, api_key),
+                    "事实与证据评估": executor.submit(assess_facts_evidence.执行, 判例, api_key),
+                    "对抗路径分析": executor.submit(analyze_opposing_paths.执行, 判例, api_key),
+                    "风险推演": executor.submit(project_risks.执行, 判例, api_key),
+                }
+                结果 = {}
+                for name, f in futures.items():
+                    try: 结果[name] = f.result()
+                    except Exception as e: 结果[name] = f"【{name}失败】{str(e)[:200]}"
+            法律关系 = 结果["法律关系识别"]
+            事实证据 = 结果["事实与证据评估"]
+            对抗路径 = 结果["对抗路径分析"]
+            风险推演 = 结果["风险推演"]
+            try: 行动建议 = suggest_actions.执行(判例, api_key)
+            except Exception as e: 行动建议 = f"【行动建议失败】{str(e)[:200]}"
+            try: 总结 = summarize_case.执行(判例, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, api_key)
+            except Exception as e: 总结 = f"【总结失败】{str(e)[:200]}"
+            全部分析 = [法律关系, 事实证据, 对抗路径, 风险推演, 行动建议]
+        else:
+            try: 结构 = structure_summary.执行(判例, api_key)
+            except Exception as e: 结构 = f"【结构化摘要失败】{str(e)[:200]}"
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                futures = {
+                    "核心争议": executor.submit(extract_dispute.执行, 判例, api_key),
+                    "推理链路": executor.submit(extract_reasoning.执行, 判例, api_key),
+                    "未回答问题": executor.submit(find_unanswered.执行, 判例, api_key),
+                }
+                结果 = {}
+                for name, f in futures.items():
+                    try: 结果[name] = f.result()
+                    except Exception as e: 结果[name] = f"【{name}失败】{str(e)[:200]}"
+            争议 = 结果["核心争议"]
+            推理 = 结果["推理链路"]
+            未答 = 结果["未回答问题"]
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                futures = {
+                    "法条适用精析": executor.submit(analyze_law_application.执行, 判例, api_key),
+                    "对立解释路径": executor.submit(find_opposing_paths.执行, 判例, api_key),
+                    "论证完整性检查": executor.submit(audit_argument_integrity.执行, 判例, api_key),
+                    "程序问题识别": executor.submit(identify_procedural_issues.执行, 判例, api_key),
+                }
+                结果2 = {}
+                for name, f in futures.items():
+                    try: 结果2[name] = f.result()
+                    except Exception as e: 结果2[name] = f"【{name}失败】{str(e)[:200]}"
+            法条精析 = 结果2["法条适用精析"]
+            对立路径 = 结果2["对立解释路径"]
+            论证检查 = 结果2["论证完整性检查"]
+            程序问题 = 结果2["程序问题识别"]
+            总结 = 结构
+            全部分析 = [争议, 推理, 未答, 法条精析, 对立路径, 论证检查, 程序问题]
+    except Exception as e:
+        return jsonify({"error": f"分析过程异常: {str(e)[:300]}"}), 500
 
     if not 判例名:
         # 从总结提取前30字作名称，跳过标题标记和废话前缀

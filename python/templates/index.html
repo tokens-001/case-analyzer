@@ -573,7 +573,7 @@ async function 开始分析() {
   document.getElementById("loading").classList.add("active");
   document.getElementById("results").classList.remove("active");
   document.getElementById("error").classList.remove("active");
-  document.querySelector(".loading").innerHTML = '<div class="spinner"></div>AI正在七维分析判例……含论证链检测与反例检索，约需35-55秒';
+  document.querySelector(".loading").innerHTML = '<div class="spinner"></div>AI正在分析中……8个维度并行处理，预计40-90秒，请耐心等待';
 
   try {
     const response = await fetch("/analyze", {
@@ -670,13 +670,21 @@ function 渲染结果(data) {
     "对抗路径": "⚔️", "风险推演": "⚠️", "行动建议": "💡",
   };
   const grid = document.getElementById("cardGrid");
-  let cardsHTML = "";
+  grid.innerHTML = "";
   for (const [key, val] of Object.entries(a)) {
     if (key === "总结" || !val) continue;
     const emoji = cardTemplates[key] || "📌";
-    cardsHTML += `<div class="card"><h3>${emoji} ${key}</h3><div class="content">${val}</div></div>`;
+    const card = document.createElement("div");
+    card.className = "card";
+    const h3 = document.createElement("h3");
+    h3.textContent = emoji + " " + key;
+    const content = document.createElement("div");
+    content.className = "content";
+    content.textContent = val;
+    card.appendChild(h3);
+    card.appendChild(content);
+    grid.appendChild(card);
   }
-  grid.innerHTML = cardsHTML;
 
   // 综合总结
   document.getElementById("r-summary").textContent = a.总结 || "";

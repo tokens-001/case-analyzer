@@ -30,7 +30,7 @@ def 智能分段(判例):
 # 共享 Prompt 片段
 # ═══════════════════════════════════════════════════════════
 
-法条提示 = "【硬性要求】必须引用本案应适用的具体法律条文，写明'《XX法》第X条'或'XX法第X条'，至少引用2条。不引用法律条文的分析视为不合格。"
+法条提示 = "如能确定本案应适用的法律条文，请引用'《XX法》第X条'或'XX法第X条'。不确定的不要编造。"
 
 
 # ═══════════════════════════════════════════════════════════
@@ -48,10 +48,17 @@ def 问AI(提示词, 判例文字, api_key):
             json={
                 "model": "deepseek-chat",
                 "messages": [{"role": "user", "content": f"{提示词}\n判例文字:\n{编号段落}"}],
+                "temperature": 0.1,
             },
             timeout=120
         )
         data = response.json()
+        if "choices" not in data:
+            return json.dumps({"error": True, "type": "api", "detail": data.get("error", {}).get("message", "API返回异常")}, ensure_ascii=False)
         return data["choices"][0]["message"]["content"]
+    except requests.exceptions.Timeout:
+        return json.dumps({"error": True, "type": "timeout", "detail": "API请求超时，请稍后重试"}, ensure_ascii=False)
+    except requests.exceptions.ConnectionError:
+        return json.dumps({"error": True, "type": "network", "detail": "网络连接失败，请检查网络"}, ensure_ascii=False)
     except Exception as e:
-        return f"【错误】API请求失败: {str(e)}"
+        return json.dumps({"error": True, "type": "unknown", "detail": f"API请求异常: {str(e)[:100]}"}, ensure_ascii=False)
