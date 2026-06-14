@@ -481,6 +481,25 @@ def 反馈路由():
 
     return jsonify({"ok": True, "message": "感谢反馈！"})
 
+@app.route("/feedback-data")
+def 反馈数据路由():
+    """查看所有用户反馈汇总"""
+    数据根 = 数据根目录
+    全部 = []
+    for uid in os.listdir(数据根):
+        反馈目录 = os.path.join(数据根, uid, "feedback")
+        if not os.path.exists(反馈目录):
+            continue
+        for fname in sorted(os.listdir(反馈目录), reverse=True):
+            try:
+                with open(os.path.join(反馈目录, fname), "r") as f:
+                    d = json.load(f)
+                d["用户ID"] = uid[:8]
+                全部.append(d)
+            except:
+                pass
+    return jsonify({"总数": len(全部), "反馈": 全部[-50:]})
+
 
 if __name__ == "__main__":
     print("判例助手网页版已启动 → http://127.0.0.1:5050")
