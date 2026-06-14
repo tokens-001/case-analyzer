@@ -23,5 +23,5 @@
 ## 关联
 
 - knowledge/019_AI工程概念地图.md ← Framework Seed
-- patterns/P001-P005 ← 未来可能组合成 Framework
+- research/insights/P001-P005 ← 未来可能组合成 Framework
 - decisions/D001-D004 ← 决策模式也可能形成框架

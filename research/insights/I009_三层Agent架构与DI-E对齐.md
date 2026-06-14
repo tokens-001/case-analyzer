@@ -15,7 +15,7 @@ Planner（GPT/Opus）→ Validator（规则/schema）→ Executor（DeepSeek）
 | Insight/Validate | 规则+schema | 方案是否合理 | I（洞察） |
 | Execution | DeepSeek | 怎么做 | E（执行） |
 
-不是巧合。判例助手里已经做了验证层（法条有效性校验、溯源越界检测），只是没抽象成通用 Agent 架构。D/I/E 前缀体系天然适配这个三层模型。
+判例助手里已经做了验证层（法条有效性校验、溯源越界检测），用 D/I/E 前缀给 Agent 分层是一个工程便利选择——把决策/执行/检查拆开后，每层可以独立选模型、控制成本。注意：I 在这里不是 insight（洞察），是 validate/inspect（校验），和 research/insights/ 里的 I 不是同一个含义。
 
 ## 关键约束
 - **不要让 DeepSeek 直接做最终决策**——会出现结构漂移、逻辑不一致、任务偏离
