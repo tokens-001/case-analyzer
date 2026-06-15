@@ -275,15 +275,20 @@ def 分析路由():
         return jsonify({"error": f"分析过程异常: {str(e)[:300]}"}), 500
 
     if not 判例名:
-        # 从总结提取前30字作名称，跳过标题标记和废话前缀
-        raw = 总结.strip()
-        for line in raw.split("\n"):
-            clean = line.strip().lstrip("#").strip()
-            if clean and len(clean) > 3 and "法律顾问" not in clean and "总结" not in clean:
-                判例名 = clean[:30].replace(" ", "")
+        # 从案情原文提取关键词作名称
+        import re as _re
+        patterns = [
+            r'(?:原被告|双方|当事人)?[因涉].{2,12}(?:纠纷|争议|合同|案件)',
+            r'(?:原告|申请人).{2,6}(?:诉|申请).{2,6}(?:纠纷|案)',
+            r'.{2,8}(?:合同|借贷|买卖|租赁|合伙|侵权|劳动|婚姻|继承|房产)纠纷',
+        ]
+        for p in patterns:
+            m = _re.search(p, 判例)
+            if m:
+                判例名 = m.group()[:30].replace(" ", "")
                 break
         if not 判例名:
-            判例名 = raw[:30].replace(" ", "").replace("\n", "") or "未命名"
+            判例名 = 判例[:30].replace(" ", "").replace("\n", "") or "未命名"
 
     # ── 本地校验层（两种模式共用）──
     法条对照 = search_law_database(法条库目录, *全部分析)
