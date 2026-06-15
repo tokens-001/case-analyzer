@@ -263,7 +263,6 @@
   .trust-score-ring.low { background: #fef0f0; border: 2px solid var(--red); color: var(--red); }
   .trust-detail { flex: 1; min-width: 180px; }
   .trust-detail .trust-label { font-size: 11px; color: var(--text-dim); font-weight: 600; }
-  .trust-detail .trust-sub { font-size: 12px; color: var(--text); margin-top: 2px; }
   .trust-breakdown { font-size: 11px; color: var(--text-dim); margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
   .trust-breakdown .tbitem { display: flex; align-items: center; gap: 3px; }
   .trust-breakdown .tbitem.up { color: var(--green); }
@@ -681,7 +680,6 @@ function 渲染结果(data) {
     ring.textContent = levelText;
     ring.className = "trust-score-ring " + (t.等级 === "高" ? "high" : t.等级 === "中" ? "mid" : "low");
     ring.style.fontSize = "16px";
-    document.getElementById("trust-sub").textContent = "";
     const breakdownItems = (t.明细 || []).map(d =>
       `<span class="tbitem ${d.方向 === '正面' ? 'up' : d.方向 === '负面' ? 'down' : ''}">${d.方向 === '正面' ? '▲' : d.方向 === '负面' ? '▼' : '—'} ${d.来源}</span>`
     ).join("");
