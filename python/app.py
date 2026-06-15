@@ -225,12 +225,13 @@ def 分析路由():
 
     try:
         if 分析模式 == "case":
-            with ThreadPoolExecutor(max_workers=4) as executor:
+            with ThreadPoolExecutor(max_workers=5) as executor:
                 futures = {
                     "法律关系识别": executor.submit(identify_relationship.执行, 判例, api_key),
                     "事实与证据评估": executor.submit(assess_facts_evidence.执行, 判例, api_key),
                     "对抗路径分析": executor.submit(analyze_opposing_paths.执行, 判例, api_key),
                     "风险推演": executor.submit(project_risks.执行, 判例, api_key),
+                    "行动建议": executor.submit(suggest_actions.执行, 判例, api_key),
                 }
                 结果 = {}
                 for name, f in futures.items():
@@ -240,42 +241,34 @@ def 分析路由():
             事实证据 = 结果["事实与证据评估"]
             对抗路径 = 结果["对抗路径分析"]
             风险推演 = 结果["风险推演"]
-            try: 行动建议 = suggest_actions.执行(判例, api_key)
-            except Exception as e: 行动建议 = f"【行动建议失败】{str(e)[:200]}"
+            行动建议 = 结果["行动建议"]
             try: 总结 = summarize_case.执行(判例, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, api_key)
             except Exception as e: 总结 = f"【总结失败】{str(e)[:200]}"
             全部分析 = [法律关系, 事实证据, 对抗路径, 风险推演, 行动建议]
         else:
-            try: 结构 = structure_summary.执行(判例, api_key)
-            except Exception as e: 结构 = f"【结构化摘要失败】{str(e)[:200]}"
-            with ThreadPoolExecutor(max_workers=3) as executor:
+            with ThreadPoolExecutor(max_workers=8) as executor:
                 futures = {
+                    "结构化摘要": executor.submit(structure_summary.执行, 判例, api_key),
                     "核心争议": executor.submit(extract_dispute.执行, 判例, api_key),
                     "推理链路": executor.submit(extract_reasoning.执行, 判例, api_key),
                     "未回答问题": executor.submit(find_unanswered.执行, 判例, api_key),
-                }
-                结果 = {}
-                for name, f in futures.items():
-                    try: 结果[name] = f.result()
-                    except Exception as e: 结果[name] = f"【{name}失败】{str(e)[:200]}"
-            争议 = 结果["核心争议"]
-            推理 = 结果["推理链路"]
-            未答 = 结果["未回答问题"]
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                futures = {
                     "法条适用精析": executor.submit(analyze_law_application.执行, 判例, api_key),
                     "对立解释路径": executor.submit(find_opposing_paths.执行, 判例, api_key),
                     "论证完整性检查": executor.submit(audit_argument_integrity.执行, 判例, api_key),
                     "程序问题识别": executor.submit(identify_procedural_issues.执行, 判例, api_key),
                 }
-                结果2 = {}
+                结果 = {}
                 for name, f in futures.items():
-                    try: 结果2[name] = f.result()
-                    except Exception as e: 结果2[name] = f"【{name}失败】{str(e)[:200]}"
-            法条精析 = 结果2["法条适用精析"]
-            对立路径 = 结果2["对立解释路径"]
-            论证检查 = 结果2["论证完整性检查"]
-            程序问题 = 结果2["程序问题识别"]
+                    try: 结果[name] = f.result()
+                    except Exception as e: 结果[name] = f"【{name}失败】{str(e)[:200]}"
+            结构 = 结果["结构化摘要"]
+            争议 = 结果["核心争议"]
+            推理 = 结果["推理链路"]
+            未答 = 结果["未回答问题"]
+            法条精析 = 结果["法条适用精析"]
+            对立路径 = 结果["对立解释路径"]
+            论证检查 = 结果["论证完整性检查"]
+            程序问题 = 结果["程序问题识别"]
             总结 = 结构
             全部分析 = [争议, 推理, 未答, 法条精析, 对立路径, 论证检查, 程序问题]
     except Exception as e:
