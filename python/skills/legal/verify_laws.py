@@ -151,14 +151,22 @@ def verify_law_citation_realness(法条库目录, *分析列表):
     if not 所有引用:
         return []
 
-    法条文件列表 = os.listdir(法条库目录)
+    法条文件列表 = [f for f in os.listdir(法条库目录) if f.endswith('.txt') and f != 'missing_laws.txt']
     未找到 = []
     for 引用 in 所有引用:
         法名 = _解析法名(引用)
         if not 法名:
             continue
-        找到 = any(法名 in f for f in 法条文件列表)
-        if not 找到:
+        匹配文件 = [f for f in 法条文件列表 if 法名 in f]
+        if not 匹配文件:
+            未找到.append(引用)
+            continue
+        条文匹配 = re.search(r'第\s*([一二三四五六七八九十百千\d]+)\s*条', 引用)
+        if not 条文匹配:
+            continue
+        条号 = 条文匹配.group(1)
+        条标 = f"第{_文章号转数字(条号)}条"
+        if not any(条标 in open(os.path.join(法条库目录, f)).read() for f in 匹配文件):
             未找到.append(引用)
     return 未找到
 

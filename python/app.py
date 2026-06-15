@@ -93,7 +93,8 @@ def 用户数据目录():
 def _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路径, 论证检查, 程序问题, 未答):
     文件夹 = 用户数据目录()
     今天 = str(date.today())
-    文件名 = f"{文件夹}/{今天}_{判例名}.json"
+    safe_name = 判例名.replace("/", "_").replace("..", "_") or "未命名"
+    文件名 = f"{文件夹}/{今天}_{safe_name}.json"
     数据 = {
         "判例名": 判例名, "日期": 今天, "模式": "判决书分析",
         "结构化摘要": 结构, "核心争议": 争议,
@@ -109,7 +110,8 @@ def _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路
 def _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, 总结):
     文件夹 = 用户数据目录()
     今天 = str(date.today())
-    文件名 = f"{文件夹}/{今天}_{判例名}.json"
+    safe_name = 判例名.replace("/", "_").replace("..", "_") or "未命名"
+    文件名 = f"{文件夹}/{今天}_{safe_name}.json"
     数据 = {
         "判例名": 判例名, "日期": 今天, "模式": "案情分析",
         "法律关系": 法律关系, "事实与证据": 事实证据,
@@ -211,11 +213,13 @@ def 分析路由():
     判例名 = data.get("name", "").strip()
     判例 = data.get("text", "").strip()
     分析模式 = data.get("mode", "judgment")  # "judgment"=判决书 "case"=案情分析
+    子模式 = data.get("submode", "read")
 
     if len(判例名) > 80:
         return jsonify({"error": "判例名称过长（最多80字）"}), 400
     if len(判例) < 50:
         return jsonify({"error": "判例文字太短（少于50字），请输入完整判例内容"}), 400
+    判例 = 判例[:15000]
 
     # 输入类型检测：非判决书/案情文本拒绝分析
     if 分析模式 == "judgment":
@@ -246,29 +250,25 @@ def 分析路由():
             except Exception as e: 总结 = f"【总结失败】{str(e)[:200]}"
             全部分析 = [法律关系, 事实证据, 对抗路径, 风险推演, 行动建议]
         else:
-            with ThreadPoolExecutor(max_workers=8) as executor:
-                futures = {
-                    "结构化摘要": executor.submit(structure_summary.执行, 判例, api_key),
-                    "核心争议": executor.submit(extract_dispute.执行, 判例, api_key),
-                    "推理链路": executor.submit(extract_reasoning.执行, 判例, api_key),
-                    "未回答问题": executor.submit(find_unanswered.执行, 判例, api_key),
-                    "法条适用精析": executor.submit(analyze_law_application.执行, 判例, api_key),
-                    "对立解释路径": executor.submit(find_opposing_paths.执行, 判例, api_key),
-                    "论证完整性检查": executor.submit(audit_argument_integrity.执行, 判例, api_key),
-                    "程序问题识别": executor.submit(identify_procedural_issues.执行, 判例, api_key),
-                }
+            tasks = {("结构化摘要", structure_summary), ("程序问题识别", identify_procedural_issues)}
+            if 子模式 == "audit":
+                tasks.update({("未回答问题", find_unanswered), ("对立解释路径", find_opposing_paths), ("论证完整性检查", audit_argument_integrity)})
+            else:
+                tasks.update({("核心争议", extract_dispute), ("推理链路", extract_reasoning), ("法条适用精析", analyze_law_application)})
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = {name: executor.submit(fn.执行, 判例, api_key) for name, fn in tasks}
                 结果 = {}
                 for name, f in futures.items():
                     try: 结果[name] = f.result()
                     except Exception as e: 结果[name] = f"【{name}失败】{str(e)[:200]}"
-            结构 = 结果["结构化摘要"]
-            争议 = 结果["核心争议"]
-            推理 = 结果["推理链路"]
-            未答 = 结果["未回答问题"]
-            法条精析 = 结果["法条适用精析"]
-            对立路径 = 结果["对立解释路径"]
-            论证检查 = 结果["论证完整性检查"]
-            程序问题 = 结果["程序问题识别"]
+            结构 = 结果.get("结构化摘要", "")
+            争议 = 结果.get("核心争议", "")
+            推理 = 结果.get("推理链路", "")
+            未答 = 结果.get("未回答问题", "")
+            法条精析 = 结果.get("法条适用精析", "")
+            对立路径 = 结果.get("对立解释路径", "")
+            论证检查 = 结果.get("论证完整性检查", "")
+            程序问题 = 结果.get("程序问题识别", "")
             总结 = 结构
             全部分析 = [争议, 推理, 未答, 法条精析, 对立路径, 论证检查, 程序问题]
     except Exception as e:

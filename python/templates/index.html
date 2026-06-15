@@ -644,7 +644,7 @@ async function 开始分析() {
     const response = await fetch("/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name || '', text: text, mode: 当前模式 })
+      body: JSON.stringify({ name: name || '', text: text, mode: 当前模式, submode: 子模式 })
     });
 
     const data = await response.json();
