@@ -64,6 +64,15 @@
   .features-title { font-weight: 700; color: var(--navy); }
   .features-desc { color: var(--text-dim); margin-left: 8px; }
 
+  .submode-switch { display: flex; gap: 6px; margin-bottom: 12px; }
+  .submode-btn {
+    padding: 4px 12px; font-size: 12px; font-weight: 600;
+    background: var(--surface); color: var(--text-dim);
+    border: 1px solid var(--border); border-radius: 8px;
+    cursor: pointer; transition: all .15s;
+  }
+  .submode-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
 
   .main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
 
@@ -334,11 +343,15 @@
   <!-- 输入区 -->
   <div class="input-section">
     <div class="features" id="features-judgment">
-      <span class="features-title">法院推理拆解（8维）</span>
+      <span class="features-title">法院推理拆解</span>
       <span class="features-desc">还原裁判逻辑</span>
     </div>
+    <div class="submode-switch" id="submode-switch">
+      <button class="submode-btn active" id="submode-read" onclick="切换子模式('read')">📖 判例解读</button>
+      <button class="submode-btn" id="submode-audit" onclick="切换子模式('audit')">⚔️ 裁判审计</button>
+    </div>
     <div class="features" id="features-case" style="display:none">
-      <span class="features-title">律师对抗分析（5维）</span>
+      <span class="features-title">律师对抗分析</span>
       <span class="features-desc">评估风险与诉讼路径</span>
     </div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;" id="formatHint">支持判决书、裁定书、仲裁裁决 · 建议500字以上</div>
@@ -534,13 +547,15 @@
 
 // ---- 模式切换 ----
 var 当前模式 = 'judgment';
+var 子模式 = 'read';
 
 function 切换模式(mode) {
   当前模式 = mode;
   document.getElementById('mode-judgment').classList.toggle('active', mode === 'judgment');
   document.getElementById('mode-case').classList.toggle('active', mode === 'case');
-  document.getElementById('features-judgment').style.display = mode === 'case' ? 'none' : 'flex';
-  document.getElementById('features-case').style.display = mode === 'case' ? 'flex' : 'none';
+  document.getElementById('features-judgment').style.display = mode === 'case' ? 'none' : '';
+  document.getElementById('features-case').style.display = mode === 'case' ? '' : 'none';
+  document.getElementById('submode-switch').style.display = mode === 'case' ? 'none' : 'flex';
   if (mode === 'case') {
     document.getElementById('caseNameLabel').textContent = '纠纷名称';
     document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：合伙纠纷';
@@ -552,6 +567,14 @@ function 切换模式(mode) {
     document.getElementById('caseText').placeholder = '粘贴判决书全文，或上传文件……';
     document.getElementById('formatHint').textContent = '支持判决书、裁定书、仲裁裁决 · 建议500字以上';
   }
+}
+
+function 切换子模式(mode) {
+  子模式 = mode;
+  document.getElementById('submode-read').classList.toggle('active', mode === 'read');
+  document.getElementById('submode-audit').classList.toggle('active', mode === 'audit');
+  // 刷新结果卡片
+  if (window._lastResult) 渲染结果(window._lastResult);
 }
 
 // ---- 页面加载：查剩余次数 ----
@@ -700,8 +723,12 @@ function 渲染结果(data) {
   };
   const grid = document.getElementById("cardGrid");
   grid.innerHTML = "";
+  const readKeys = ["结构化摘要", "核心争议", "推理链路", "法条适用精析", "程序问题识别"];
+  const auditKeys = ["未回答问题", "对立解释路径", "论证完整性检查", "程序问题识别"];
+  const visibleKeys = (当前模式 === 'judgment') ? (子模式 === 'read' ? readKeys : auditKeys) : Object.keys(a);
   for (const [key, val] of Object.entries(a)) {
     if (key === "总结" || !val) continue;
+    if (当前模式 === 'judgment' && !visibleKeys.includes(key)) continue;
     const emoji = cardTemplates[key] || "📌";
     const card = document.createElement("div");
     card.className = "card";
