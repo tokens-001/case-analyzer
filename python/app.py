@@ -501,7 +501,11 @@ def 反馈数据路由():
 
 
 @app.route("/dashboard")
-def 后台面板():
+def 后台页面():
+    return render_template("dashboard.html")
+
+@app.route("/dashboard/data")
+def 后台数据():
     """访问量统计面板"""
     import collections
     分析总数 = 0
