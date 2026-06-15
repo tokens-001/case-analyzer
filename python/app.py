@@ -250,13 +250,13 @@ def 分析路由():
             except Exception as e: 总结 = f"【总结失败】{str(e)[:200]}"
             全部分析 = [法律关系, 事实证据, 对抗路径, 风险推演, 行动建议]
         else:
-            tasks = {("结构化摘要", structure_summary), ("程序问题识别", identify_procedural_issues)}
+            tasks = {"结构化摘要": structure_summary, "程序问题识别": identify_procedural_issues}
             if 子模式 == "audit":
-                tasks.update({("未回答问题", find_unanswered), ("对立解释路径", find_opposing_paths), ("论证完整性检查", audit_argument_integrity)})
+                tasks.update({"未回答问题": find_unanswered, "对立解释路径": find_opposing_paths, "论证完整性检查": audit_argument_integrity})
             else:
-                tasks.update({("核心争议", extract_dispute), ("推理链路", extract_reasoning), ("法条适用精析", analyze_law_application)})
+                tasks.update({"核心争议": extract_dispute, "推理链路": extract_reasoning, "法条适用精析": analyze_law_application})
             with ThreadPoolExecutor(max_workers=5) as executor:
-                futures = {name: executor.submit(fn.执行, 判例, api_key) for name, fn in tasks}
+                futures = {name: executor.submit(fn.执行, 判例, api_key) for name, fn in tasks.items()}
                 结果 = {}
                 for name, f in futures.items():
                     try: 结果[name] = f.result()
