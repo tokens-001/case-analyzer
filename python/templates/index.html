@@ -550,6 +550,11 @@ var 当前模式 = 'judgment';
 var 子模式 = 'read';
 
 function 切换模式(mode) {
+  if (当前模式 !== mode) {
+    document.getElementById("caseName").value = "";
+    document.getElementById("caseText").value = "";
+    document.getElementById("results").classList.remove("active");
+  }
   当前模式 = mode;
   document.getElementById('mode-judgment').classList.toggle('active', mode === 'judgment');
   document.getElementById('mode-case').classList.toggle('active', mode === 'case');
