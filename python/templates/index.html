@@ -595,7 +595,7 @@ async function 开始分析() {
   document.getElementById("loading").classList.add("active");
   document.getElementById("results").classList.remove("active");
   document.getElementById("error").classList.remove("active");
-  document.querySelector(".loading").innerHTML = '<div class="spinner"></div>AI正在分析中……8个维度并行处理，预计40-90秒，请耐心等待';
+  document.querySelector(".loading").innerHTML = '<div class="spinner"></div>AI正在分析中……预计20-40秒';
 
   try {
     const response = await fetch("/analyze", {
