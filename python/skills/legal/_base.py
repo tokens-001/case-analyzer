@@ -48,7 +48,7 @@ def 问AI(提示词, 判例文字, api_key):
             json={
                 "model": "deepseek-chat",
                 "messages": [
-                    {"role": "system", "content": "你是一个法律分析系统。直接输出分析结果，禁止使用\"好的\"\"以下是\"\"综上所述\"\"为您提供\"等寒暄语，禁止在开头或结尾加任何客套话。"},
+                    {"role": "system", "content": "你是一个法律分析系统。直接输出分析结果，禁止寒暄客套。每个分析维度控制在300字以内，精炼不啰嗦。"},
                     {"role": "user", "content": f"{提示词}\n判例文字:\n{编号段落}"}
                 ],
                 "temperature": 0.1,
