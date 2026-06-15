@@ -510,8 +510,10 @@ def 后台面板():
     用户集合 = set()
     if os.path.exists(数据根目录):
         for uid in os.listdir(数据根目录):
-            用户集合.add(uid)
             user_dir = os.path.join(数据根目录, uid)
+            if not os.path.isdir(user_dir):
+                continue
+            用户集合.add(uid)
             for fname in os.listdir(user_dir):
                 if fname.endswith(".json") and not fname.startswith("limit"):
                     分析总数 += 1
