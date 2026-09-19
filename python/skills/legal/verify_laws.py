@@ -16,7 +16,7 @@
    再加一个"查一遍库"的函数等于把这个分歧再复制一份。
 """
 
-import os, re, json
+import os, re
 from datetime import date
 
 def _文章号转数字(文章号):

@@ -1,7 +1,7 @@
 # 判例助手 - Web版
 # Flask后端：接收判例 → 调用DeepSeek分析 → 返回结果
 
-import os, json, uuid, re
+import os, json, uuid
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
@@ -43,7 +43,6 @@ from skills.legal.score_analysis import (
     generate_risk_list,
     compute_trust_score,
 )
-from skills.legal._base import 智能分段
 
 app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
@@ -510,7 +509,6 @@ def 反馈数据路由():
 @app.route("/dashboard")
 def 后台面板():
     """访问量统计面板"""
-    import collections
     分析总数 = 0
     判决书数 = 0
     案情数 = 0
