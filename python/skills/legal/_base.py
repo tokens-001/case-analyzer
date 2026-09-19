@@ -40,10 +40,18 @@ def 智能分段(判例):
 # API 调用
 # ═══════════════════════════════════════════════════════════
 
-def 问AI(提示词, 判例文字, api_key):
-    """发送请求给 DeepSeek，判例文字自动加段落编号"""
-    段落列表 = 智能分段(判例文字)
-    编号段落 = "\n\n".join(f"[第{i+1}段] {p}" for i, p in enumerate(段落列表))
+def 问AI(提示词, 判例文字, api_key, 附段落编号=True):
+    """发送请求给 DeepSeek。
+
+    `附段落编号=False`：合同模式用。那条路自己插了【第N条】锚点，
+    再套一层 [第X段] 会让模型改去引用段号 —— 而本地校验认的是条号锚点，
+    两套编号同时在场时它引哪一个就成了运气。
+    """
+    if 附段落编号:
+        段落列表 = 智能分段(判例文字)
+        编号段落 = "\n\n".join(f"[第{i+1}段] {p}" for i, p in enumerate(段落列表))
+    else:
+        编号段落 = 判例文字
     try:
         response = requests.post(
             url="https://api.deepseek.com/v1/chat/completions",

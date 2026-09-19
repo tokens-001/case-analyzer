@@ -39,6 +39,10 @@ from skills.legal.verify_laws import (
     count_law_citations,
     classify_law_citations,
 )
+from skills.legal.verify_clauses import verify_clause_anchors
+from skills.legal import contract_skills
+from skills.legal.contract_types import 判定类型
+import parse_doc
 from skills.legal.trace_citations import 执行 as trace_citations
 from skills.legal.score_analysis import (
     validate_analysis_quality,
@@ -106,6 +110,35 @@ def _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路
     with open(文件名, "w") as f:
         json.dump(数据, f)
     return 文件名
+
+def _存储合同JSON(判例名, 合同类型, 分析结果):
+    文件夹 = 用户数据目录()
+    今天 = str(date.today())
+    安全名 = 判例名.replace("/", "_").replace("..", "_") or "未命名"
+    数据 = {"判例名": 判例名, "日期": 今天, "模式": "合同审查", "合同类型": 合同类型, **分析结果}
+    os.makedirs(文件夹, exist_ok=True)
+    with open(f"{文件夹}/{今天}_{安全名}.json", "w") as f:
+        json.dump(数据, f)
+
+
+@app.route("/parse-doc", methods=["POST"])
+def 解析文档路由():
+    """上传 docx/pdf/txt → 解析成带【第N条】锚点的文本，填回前端的文本框。
+
+    只解析、不分析、不计次数。刻意不把分析也做了：让用户先看见解析出来的文本长什么样，
+    扫描件/表格型合同这类解析质量差的情况能被**人眼当场发现**，而不是让模型对着
+    一份空文本编出一份像模像样的风险清单。
+    """
+    档 = request.files.get("file")
+    if 档 is None or not 档.filename:
+        return jsonify({"error": "没收到文件"}), 400
+    字节 = 档.read()
+    if len(字节) > 20 * 1024 * 1024:
+        return jsonify({"error": "文件超过 20MB"}), 400
+    出 = parse_doc.解析(字节, 档.filename)
+    if 出['错误']:
+        return jsonify({"error": 出['错误']}), 400
+    return jsonify({"文本": 出['文本'], "条数": 出['条数'], "警告": 出['警告']})
 
 def _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, 总结):
     文件夹 = 用户数据目录()
@@ -212,13 +245,16 @@ def 分析路由():
     data = request.json
     判例名 = data.get("name", "").strip()
     判例 = data.get("text", "").strip()
-    分析模式 = data.get("mode", "judgment")  # "judgment"=判决书 "case"=案情分析
+    分析模式 = data.get("mode", "judgment")  # judgment=判决书 case=案情分析 contract=合同审查
     子模式 = data.get("submode", "read")
 
     if len(判例名) > 80:
         return jsonify({"error": "判例名称过长（最多80字）"}), 400
     if len(判例) < 50:
         return jsonify({"error": "判例文字太短（少于50字），请输入完整判例内容"}), 400
+    # 截断必须说出来：合同审查里"没看到的那部分"恰恰可能藏着缺的条款。
+    # 不标的话，后段条款在界面上与"合同里没有"长得一模一样。
+    被截断 = len(判例) > 15000
     判例 = 判例[:15000]
 
     # 输入类型检测：非判决书/案情文本拒绝分析
@@ -226,6 +262,9 @@ def 分析路由():
         judgment_keywords = ["法院", "判决", "原告", "被告", "裁定", "本院", "审理", "诉称", "辩称"]
         if not any(kw in 判例 for kw in judgment_keywords[:4]):
             return jsonify({"error": "输入文本不像判决书。判决书通常包含'原告''被告''法院'等主体信息。如确为判决书请继续；如为案情咨询请切换至'案情分析'模式。"}), 400
+
+    # 合同模式才有的变量，先给默认值 —— 下面那段校验就不用到处判模式
+    条款表, 无条号警告, 合同类型 = {}, [], ""
 
     try:
         if 分析模式 == "case":
@@ -249,6 +288,33 @@ def 分析路由():
             try: 总结 = summarize_case.执行(判例, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, api_key)
             except Exception as e: 总结 = f"【总结失败】{str(e)[:200]}"
             全部分析 = [法律关系, 事实证据, 对抗路径, 风险推演, 行动建议]
+        elif 分析模式 == "contract":
+            # 锚点表**服务端现算**：只从即将喂给模型的这份文本里派生。
+            # 收客户端传来的条款表，等于让它自己声明「我每条都对得上」。
+            带锚点文本, 条款表, 条数, 无条号警告 = parse_doc.规范化(判例)
+            合同类型, _ = 判定类型(带锚点文本)
+            判例 = 带锚点文本
+            维度 = {
+                "风险清单": contract_skills.风险清单,
+                "缺失条款": contract_skills.缺失条款,
+                "失衡条款": contract_skills.失衡条款,
+                "歧义表述": contract_skills.歧义表述,
+                "谈判顺序": contract_skills.谈判顺序,
+            }
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = {名: executor.submit(fn, 判例, 合同类型, api_key)
+                           for 名, fn in 维度.items()}
+                结果 = {}
+                for 名, f in futures.items():
+                    try: 结果[名] = f.result()
+                    except Exception as e: 结果[名] = f"【{名}失败】{str(e)[:200]}"
+            全部分析 = [结果[k] for k in 维度]
+            try:
+                总结 = contract_skills.总结(判例, 合同类型, 结果, api_key)
+            except Exception as e:
+                总结 = f"【总结失败】{str(e)[:200]}"
+            审查警告 = list(无条号警告) + ([f"合同被截断到 15000 字，后 {len(带锚点文本) - 15000} 字未参与审查"
+                                        if 被截断 else []])
         else:
             tasks = {"结构化摘要": structure_summary, "程序问题识别": identify_procedural_issues}
             if 子模式 == "audit":
@@ -290,23 +356,37 @@ def 分析路由():
         if not 判例名:
             判例名 = 判例[:30].replace(" ", "").replace("\n", "") or "未命名"
 
-    # ── 本地校验层（两种模式共用）──
-    # 判据只算一次：classify_law_citations 是三态分类的唯一出口，
-    # 风险列表与可信度评分都读它的结果，不各自判断真伪。
+    # ── 本地校验层（各模式共用，判据只算一次）──
+    # classify_law_citations / verify_clause_anchors 各自是其维度的唯一出口，
+    # 风险列表与可信度评分都读结果，不各自判断真伪。
     法条校验 = classify_law_citations(法条库目录, "", *全部分析)
     法条对照 = 法条校验["可验证"]          # 前端沿用这个键，契约不变
+    条款校验 = verify_clause_anchors(条款表, *全部分析) if 分析模式 == "contract" else None
+    审查警告 = list(无条号警告)
+    if 分析模式 == "contract" and 被截断:
+        审查警告.append(f"合同超出 {15000} 字的部分未参与本次审查 —— "
+                        f"『没找到某条款』在截断范围内不成立")
     # 前 4 位对应 全部分析[:4]，第 5 位对应被单独检查的 总结（判决书模式下它是"结构化摘要"）
-    段落名 = (["法律关系", "事实与证据", "对抗路径", "风险推演", "总结"] if 分析模式 == "case"
-               else ["核心争议", "推理链路", "未回答问题", "法条适用精析", "总结（结构化摘要）"])
+    段落名 = {"case": ["法律关系", "事实与证据", "对抗路径", "风险推演", "总结"],
+              "contract": ["风险清单", "缺失条款", "失衡条款", "歧义表述", "总结"],
+              }.get(分析模式, ["核心争议", "推理链路", "未回答问题", "法条适用精析", "总结（结构化摘要）"])
     验证 = validate_analysis_quality(*全部分析[:4], 总结, count_law_citations, 段落名=段落名)
-    溯源 = trace_citations(判例, *全部分析) if 分析模式 != "case" else {"warning": "案情模式不适用溯源校验"}
+    溯源 = ({"warning": "案情模式不适用段号溯源；合同模式按条号锚点校验"}
+            if 分析模式 in ("case", "contract")
+            else trace_citations(判例, *全部分析))
 
     # ── 组装返回 ──
     剩余 = 剩余次数查询(uid, ip)
-    可信度 = compute_trust_score(验证, 法条校验, 溯源)
-    风险列表 = generate_risk_list(验证, 法条校验, 溯源)
+    可信度 = compute_trust_score(验证, 法条校验, 溯源, 条款校验=条款校验)
+    风险列表 = generate_risk_list(验证, 法条校验, 溯源, 条款校验=条款校验)
+    for 警 in 审查警告:
+        风险列表.append({"等级": "note", "内容": 警})
 
-    if 分析模式 == "case":
+    if 分析模式 == "contract":
+        分析结果 = {名: 结果[名] for 名 in ("风险清单", "缺失条款", "失衡条款", "歧义表述", "谈判顺序")}
+        分析结果["总结"] = 总结
+        _存储合同JSON(判例名, 合同类型, 分析结果)
+    elif 分析模式 == "case":
         分析结果 = {
             "法律关系": 法律关系, "事实与证据": 事实证据,
             "对抗路径": 对抗路径, "风险推演": 风险推演,
@@ -335,6 +415,9 @@ def 分析路由():
         "风险列表": 风险列表,
         # 三态读数（可验证那一份已经在上面的 法条对照 里，别重复塞进响应）
         "法条校验": {k: v for k, v in 法条校验.items() if k != "可验证"},
+        # 合同模式专有：条款锚点三态 + 类型 + 条数（类型判不准时是"通用"，照实说）
+        "条款校验": ({k: v for k, v in 条款校验.items()} if 条款校验 else None),
+        "合同类型": 合同类型, "条数": len([k for k in 条款表 if k != '前言']),
     })
 
 @app.route("/remaining")

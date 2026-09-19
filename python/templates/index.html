@@ -337,6 +337,7 @@
   <div class="mode-switch">
     <button class="mode-btn active" id="mode-judgment" onclick="切换模式('judgment')">判决书分析</button>
     <button class="mode-btn" id="mode-case" onclick="切换模式('case')">案情分析</button>
+    <button class="mode-btn" id="mode-contract" onclick="切换模式('contract')">合同审查</button>
   </div>
 </div>
 
@@ -368,7 +369,7 @@
       <button class="btn btn-primary" onclick="开始分析()">开始分析</button>
       <span class="file-upload">
         <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">上传文件</button>
-        <input type="file" id="fileInput" accept=".txt" onchange="读文件(this)">
+        <input type="file" id="fileInput" accept=".txt,.docx,.pdf" onchange="读文件(this)">
       </span>
       <button class="btn btn-secondary" onclick="清空()">清空</button>
       <span id="remaining" style="margin-left:auto; font-size:12px; color:var(--text-dim);"></span>
@@ -560,19 +561,27 @@ function 切换模式(mode) {
   当前模式 = mode;
   document.getElementById('mode-judgment').classList.toggle('active', mode === 'judgment');
   document.getElementById('mode-case').classList.toggle('active', mode === 'case');
-  document.getElementById('features-judgment').style.display = mode === 'case' ? 'none' : '';
+  document.getElementById('mode-contract').classList.toggle('active', mode === 'contract');
+  document.getElementById('features-judgment').style.display = mode === 'judgment' ? '' : 'none';
   document.getElementById('features-case').style.display = mode === 'case' ? '' : 'none';
-  document.getElementById('submode-switch').style.display = mode === 'case' ? 'none' : 'flex';
+  // 子模式只对判决书模式有意义，合同模式走自己那套锚点校验
+  document.getElementById('submode-switch').style.display = mode === 'judgment' ? 'flex' : 'none';
+  const 提示 = document.getElementById('formatHint');
   if (mode === 'case') {
     document.getElementById('caseNameLabel').textContent = '纠纷名称';
     document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：合伙纠纷';
     document.getElementById('caseText').placeholder = '请尽量完整描述纠纷经过、双方主张和现阶段情况……';
-    document.getElementById('formatHint').textContent = '描述你的纠纷情况 · 建议详细陈述事实经过';
+    提示.textContent = '描述你的纠纷情况 · 建议详细陈述事实经过';
+  } else if (mode === 'contract') {
+    document.getElementById('caseNameLabel').textContent = '合同名称';
+    document.getElementById('caseName').placeholder = '可留空，例：XX系统运维服务合同';
+    document.getElementById('caseText').placeholder = '粘贴合同全文，或上传 .docx / .pdf / .txt（上传后会先给你看解析结果）……';
+    提示.textContent = '站我方审：风险清单 + 谈判让步顺序 · 每条结论会回查合同原文';
   } else {
     document.getElementById('caseNameLabel').textContent = '判例名称';
     document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：张某诉李某合同纠纷案';
     document.getElementById('caseText').placeholder = '粘贴判决书全文，或上传文件……';
-    document.getElementById('formatHint').textContent = '支持判决书、裁定书、仲裁裁决 · 建议500字以上';
+    提示.textContent = '支持判决书、裁定书、仲裁裁决 · 建议500字以上';
   }
 }
 
@@ -604,18 +613,37 @@ async function 刷新剩余次数() {
 刷新剩余次数();
 
 // ---- 文件读取 ----
-function 读文件(input) {
+async function 读文件(input) {
   const file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    document.getElementById("caseText").value = e.target.result;
-    // 用文件名当判例名（去扩展名）
+  const 填 = (文本) => {
+    document.getElementById("caseText").value = 文本;
     if (!document.getElementById("caseName").value) {
       document.getElementById("caseName").value = file.name.replace(/\.\w+$/, "");
     }
   };
-  reader.readAsText(file);
+  if (/\.txt$/i.test(file.name)) {
+    const reader = new FileReader();
+    reader.onload = (e) => 填(e.target.result);
+    reader.readAsText(file);
+    input.value = "";
+    return;
+  }
+  // docx / pdf 必须走服务端解析：浏览器里读出来的是二进制，readAsText 会得到乱码，
+  // 而"看起来读到了东西"比"报解析失败"更坏 —— 它会喂给模型一份空合同。
+  const fd = new FormData();
+  fd.append("file", file);
+  填("正在解析 " + file.name + " …");
+  try {
+    const 回 = await (await fetch("/parse-doc", { method: "POST", body: fd })).json();
+    if (回.error) { 填(""); 显示错误(回.error); }
+    else {
+      填(回.文本);
+      if (回.警告 && 回.警告.length) 显示错误("解析提示：" + 回.警告.join("；"));
+      else if (!回.条数) 显示错误("解析结果 0 条条款，逐条锚点校验将不可用");
+    }
+  } catch (e) { 填(""); 显示错误("解析请求失败：" + e.message); }
+  input.value = "";
 }
 
 // ---- 清空 ----
@@ -727,6 +755,8 @@ function 渲染结果(data) {
     "论证完整性检查": "🔗", "程序问题识别": "🏛️", "未回答问题": "❓",
     "法律关系": "⚖️", "事实与证据": "📋",
     "对抗路径": "⚔️", "风险推演": "⚠️", "行动建议": "💡",
+    "风险清单": "🚨", "缺失条款": "🕳️", "失衡条款": "⚖️",
+    "歧义表述": "❔", "谈判顺序": "🤝",
   };
   const grid = document.getElementById("cardGrid");
   grid.innerHTML = "";
