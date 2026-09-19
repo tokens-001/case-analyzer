@@ -8,7 +8,8 @@
     result = extract_dispute.执行(判例文字, api_key)
 
     from skills.legal import verify_laws
-    warnings = verify_laws.verify_law_citation_realness(法条库目录, 分析1, 分析2, ...)
+    校验 = verify_laws.classify_law_citations(法条库目录, 案发日期, 分析1, 分析2, ...)
+    # 三态：可验证 / 疑似编造 / 库外，外加"无条号引用"和"未识别"两类未校验项
 
 分类：
     AI技能（调DeepSeek）:
@@ -24,7 +25,7 @@
         discover_opposing_laws  — 相反法条发现
 
     本地校验技能（不调API）:
-        verify_laws             — 法条校验全家桶
+        verify_laws             — 法条三态校验（全仓唯一的判据出口）
         trace_citations         — 溯源对比
         score_analysis          — 分析质量评估
 """

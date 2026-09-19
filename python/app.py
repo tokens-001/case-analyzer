@@ -35,8 +35,7 @@ from skills.legal import (
 )
 from skills.legal.verify_laws import (
     count_law_citations,
-    search_law_database,
-    verify_law_citation_realness,
+    classify_law_citations,
 )
 from skills.legal.trace_citations import 执行 as trace_citations
 from skills.legal.score_analysis import (
@@ -291,15 +290,17 @@ def 分析路由():
             判例名 = 判例[:30].replace(" ", "").replace("\n", "") or "未命名"
 
     # ── 本地校验层（两种模式共用）──
-    法条对照 = search_law_database(法条库目录, *全部分析)
-    法条真实性警告 = verify_law_citation_realness(法条库目录, *全部分析)
+    # 判据只算一次：classify_law_citations 是三态分类的唯一出口，
+    # 风险列表与可信度评分都读它的结果，不各自判断真伪。
+    法条校验 = classify_law_citations(法条库目录, "", *全部分析)
+    法条对照 = 法条校验["可验证"]          # 前端沿用这个键，契约不变
     验证 = validate_analysis_quality(*全部分析[:4], 总结, count_law_citations)
     溯源 = trace_citations(判例, *全部分析) if 分析模式 != "case" else {"warning": "案情模式不适用溯源校验"}
 
     # ── 组装返回 ──
     剩余 = 剩余次数查询(uid, ip)
-    可信度 = compute_trust_score(验证, 法条对照, 溯源, 法条真实性警告)
-    风险列表 = generate_risk_list(验证, 法条对照, 溯源, 法条真实性警告)
+    可信度 = compute_trust_score(验证, 法条校验, 溯源)
+    风险列表 = generate_risk_list(验证, 法条校验, 溯源)
 
     if 分析模式 == "case":
         分析结果 = {
@@ -328,7 +329,8 @@ def 分析路由():
         "验证": 验证,
         "可信度": 可信度,
         "风险列表": 风险列表,
-        "法条真实性警告": 法条真实性警告,
+        # 三态读数（可验证那一份已经在上面的 法条对照 里，别重复塞进响应）
+        "法条校验": {k: v for k, v in 法条校验.items() if k != "可验证"},
     })
 
 @app.route("/remaining")

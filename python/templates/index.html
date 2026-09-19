@@ -253,6 +253,8 @@
   }
   .risk-item.warning { background: #fdf8ed; border: 1px solid #e8d5a0; color: var(--amber); }
   .risk-item.danger { background: #fef0f0; border: 1px solid #f5c6c6; color: var(--red); }
+  /* note = 工具的覆盖边界，不是这条分析的错误。别用红色/琥珀色抢注意力。 */
+  .risk-item.note { background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); font-weight: 400; }
 
   /* ---- 可信度 ---- */
   .trust-dashboard {
@@ -691,7 +693,7 @@ function 渲染结果(data) {
   if (data.风险列表 && data.风险列表.length > 0) {
     riskSection.style.display = "block";
     riskItems.innerHTML = data.风险列表.map(r => {
-      const icon = r.等级 === "danger" ? "🔴" : "🟡";
+      const icon = r.等级 === "danger" ? "🔴" : r.等级 === "warning" ? "🟡" : "⚪";
       return `<div class="risk-item ${r.等级}">${icon} ${r.内容}</div>`;
     }).join("");
   } else {
