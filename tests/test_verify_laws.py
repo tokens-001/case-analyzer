@@ -226,6 +226,49 @@ def test_中文写法的案发时间能过时效这道门():
         shutil.rmtree(目录, ignore_errors=True)
 
 
+# ─────────────── 条号写法：中文数字、带零、带"之一" ───────────────
+
+def test_中文条号带零不能被截断():
+    """民法典 989 条以后全是"第一千零七十九条"这种写法，而数字类正则漏了 零，
+    于是被截成"《民法典》第一千"落进未识别 —— 永远校验不了。
+    `data/laws/missing_laws.txt` 里那条"《中华人民共和国民法典》第一千"就是证据。"""
+    for 引用 in ["《民法典》第一千零七十九条", "《民法典》第一千零四十六条", "《民法典》第一千一百六十八条"]:
+        assert verify_laws._提取法条引用(引用) == [引用], 引用
+        结果 = verify_laws.classify_law_citations(法条库, "", 引用)
+        assert 结果["可验证"], 结果
+        assert 结果["未识别"] == [] and 结果["疑似编造"] == [], 结果
+
+
+def test_中文与阿拉伯写法必须判到同一条原文():
+    甲 = verify_laws.classify_law_citations(法条库, "", "《民法典》第一千零七十九条")
+    乙 = verify_laws.classify_law_citations(法条库, "", "《民法典》第1079条")
+    assert [e["条文"] for e in 甲["可验证"]] == [e["条文"] for e in 乙["可验证"]], (甲, 乙)
+
+
+def test_条号之一不能拿基条冒充():
+    """原来"之一"整个被丢掉：《刑法》第133条之一（危险驾驶罪）返回的是
+    第133条（交通肇事罪）的原文，还照样算"可验证" —— 这是假绿灯。"""
+    变体 = verify_laws.classify_law_citations(法条库, "", "《刑法》第133条之一")["可验证"][0]
+    基条 = verify_laws.classify_law_citations(法条库, "", "《刑法》第133条")["可验证"][0]
+    assert 变体["条文"].startswith("第133条之一"), 变体["条文"]
+    assert 变体["条文"] != 基条["条文"]
+
+
+def test_基条在库而变体不在时判未校验不判编造():
+    """库里有第5条、没有"第5条之一" ⇒ 这是库不全，不是有人编造。"""
+    目录 = _假法条库()
+    try:
+        结果 = verify_laws.classify_law_citations(目录, "", "《测试法》第5条之一")
+        assert 结果["未识别"] == ["《测试法》第5条之一"], 结果
+        assert 结果["疑似编造"] == [], 结果
+        assert 结果["未校验数"] == 1 and 结果["已校验数"] == 0, 结果
+        # 基条也不在库里，才轮到"疑似编造"
+        另一个 = verify_laws.classify_law_citations(目录, "", "《测试法》第99条之一")
+        assert 另一个["疑似编造"] == ["《测试法》第99条之一"], 另一个
+    finally:
+        shutil.rmtree(目录, ignore_errors=True)
+
+
 def test_库外引用只进补库清单不误报警():
     目录 = _假法条库()
     try:
