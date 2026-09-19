@@ -17,7 +17,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -r python/requirements.txt ruff pytest
+      - run: pip install -r python/requirements.txt pytest
+      - run: pip install 'ruff==0.16.7'   # 钉版本：不钉 = 门的内容由 ruff 的发版决定
 
       # 门只卡这一组：未用导入(F4) + 未定义名/重复定义(F8)。
       # 理由不是"洁癖"，是 _base.py 曾有 4 处 json.dumps 全在异常分支上、

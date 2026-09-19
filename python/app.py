@@ -1,7 +1,9 @@
 # 判例助手 - Web版
 # Flask后端：接收判例 → 调用DeepSeek分析 → 返回结果
 
-import os, json, uuid
+import os
+import json
+import uuid
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
@@ -293,7 +295,10 @@ def 分析路由():
     # 风险列表与可信度评分都读它的结果，不各自判断真伪。
     法条校验 = classify_law_citations(法条库目录, "", *全部分析)
     法条对照 = 法条校验["可验证"]          # 前端沿用这个键，契约不变
-    验证 = validate_analysis_quality(*全部分析[:4], 总结, count_law_citations)
+    # 前 4 位对应 全部分析[:4]，第 5 位对应被单独检查的 总结（判决书模式下它是"结构化摘要"）
+    段落名 = (["法律关系", "事实与证据", "对抗路径", "风险推演", "总结"] if 分析模式 == "case"
+               else ["核心争议", "推理链路", "未回答问题", "法条适用精析", "总结（结构化摘要）"])
+    验证 = validate_analysis_quality(*全部分析[:4], 总结, count_law_citations, 段落名=段落名)
     溯源 = trace_citations(判例, *全部分析) if 分析模式 != "case" else {"warning": "案情模式不适用溯源校验"}
 
     # ── 组装返回 ──
@@ -360,7 +365,7 @@ def 历史路由():
                 "日期": d.get("日期", ""),
                 "总结": d.get("总结", "")[:120]
             })
-        except:
+        except Exception:
             pass
     return jsonify(结果)
 
@@ -389,7 +394,7 @@ def 详情路由(fname):
             "可信度": None,
             "风险列表": [],
         })
-    except:
+    except Exception:
         return jsonify({"error": "读取失败"}), 500
 
 @app.route("/download", methods=["POST"])
@@ -497,7 +502,7 @@ def 反馈数据路由():
                     d = json.load(f)
                 d["用户ID"] = uid[:8]
                 全部.append(d)
-            except:
+            except Exception:
                 pass
     from flask import Response
     return Response(
@@ -529,7 +534,7 @@ def 后台面板():
                             案情数 += 1
                         else:
                             判决书数 += 1
-                    except:
+                    except Exception:
                         pass
     反馈数 = 0
     if os.path.exists(数据根目录):
