@@ -164,6 +164,68 @@ def test_未给案发日期时说清并压住等级():
         shutil.rmtree(目录, ignore_errors=True)
 
 
+def test_缺施行日期不影响已废止告警():
+    """`if not 施行日期: return None` 原来排在状态判断前面 —— 一部没写施行日期的库文件
+    哪怕标着"已废止"也会静默返回 None。缺一份元数据，不该把另一条无关的判据一起吞掉。"""
+    目录 = tempfile.mkdtemp(prefix="法条库-")
+    try:
+        with open(os.path.join(目录, "无日期法.txt"), "w", encoding="utf-8") as f:
+            f.write("#META\n法名: 无日期法\n状态: 已废止\n#END\n\n第1条\n旧条文。\n")
+        结果 = verify_laws.classify_law_citations(目录, "", "《无日期法》第1条")
+        assert "已废止" in 结果["可验证"][0]["版本警告"], 结果
+    finally:
+        shutil.rmtree(目录, ignore_errors=True)
+
+
+# ─────────────── 案发时间怎么认 ───────────────
+
+def test_案发时间认这几种写法():
+    对 = {"2023-04-05": "2023-04-05", "2023/4/5": "2023-04-05", "2023.4.5": "2023-04-05",
+          "2023年4月5日": "2023-04-05", "2019年5月": "2019-05-01",
+          "2023-04": "2023-04-01", "2023": "2023-01-01", "2023年": "2023-01-01",
+          "  2023年  ": "2023-01-01"}
+    for 原始, 期望 in 对.items():
+        assert verify_laws.规范案发日期(原始) == 期望, 原始
+    # 只到年/月时补 1 号：往早取，"案发早于施行"才不会因补到月末而漏报
+
+
+def test_读不懂的案发时间一律不收():
+    for 坏 in ["", "   ", None, 2023, "2019年左右", "前几年", "2023-13-01", "2023-02-30",
+               "第五十条", "2023-04-05 至 2023-06-01"]:
+        assert verify_laws.规范案发日期(坏) is None, 坏
+
+
+def test_填了但读不懂的案发时间不能点亮绿灯():
+    """这条是整个改动的落点：悄悄把垃圾当"没填"，用户会以为时效比过了。"""
+    目录 = _假法条库()
+    try:
+        结果 = verify_laws.classify_law_citations(目录, "2019年左右", "《测试法》第5条")
+        assert 结果["案发日期已知"] is False, 结果
+        assert 结果["案发日期无法解析"] is True and 结果["案发日期原文"] == "2019年左右", 结果
+        assert 结果["可验证"][0]["版本警告"] == "", 结果   # 没日期就不许凭空比出个结论
+        可信度 = score_analysis.compute_trust_score(格式通过, 结果, None)
+        assert 可信度["等级"] == "中", 可信度
+        风险 = score_analysis.generate_risk_list(格式通过, 结果, None)
+        assert any("没能识别" in r["内容"] for r in 风险), 风险   # 要说得出是用户填错了
+    finally:
+        shutil.rmtree(目录, ignore_errors=True)
+
+
+def test_中文写法的案发时间能过时效这道门():
+    """绿灯本来就存在，只是 `app` 写死传空串 ⇒ 永不可达。前端补了输入框，这里锁住
+    "填了能认、认了真比、比过才抬等级"整条判据。"""
+    目录 = _假法条库()
+    try:
+        结果 = verify_laws.classify_law_citations(目录, "2021年3月", "《测试法》第5条")
+        assert 结果["案发日期已知"] is True, 结果
+        assert 结果["可验证"][0]["版本警告"] == "", 结果        # 施行 2020-01-01，案发在其后
+        可信度 = score_analysis.compute_trust_score(格式通过, 结果, None)
+        assert 可信度["等级"] == "高", 可信度
+        assert any("时效已按案发时间" in s["来源"] for s in 可信度["明细"]), 可信度
+    finally:
+        shutil.rmtree(目录, ignore_errors=True)
+
+
 def test_库外引用只进补库清单不误报警():
     目录 = _假法条库()
     try:

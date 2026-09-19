@@ -362,6 +362,10 @@
       <label id="caseNameLabel">判例名称</label>
       <input type="text" id="caseName" placeholder="可留空，AI自动提取，例：张某诉李某合同纠纷案">
     </div>
+    <div class="input-row">
+      <label id="dateLabel">案发时间</label>
+      <input type="text" id="caseDate" maxlength="40" placeholder="选填 · 2023-04-05 · 不填则时效未校验">
+    </div>
 
     <textarea id="caseText" placeholder="粘贴判决书全文，或点击下方上传文件……"></textarea>
 
@@ -555,6 +559,7 @@ var 子模式 = 'read';
 function 切换模式(mode) {
   if (当前模式 !== mode) {
     document.getElementById("caseName").value = "";
+    document.getElementById("caseDate").value = "";
     document.getElementById("caseText").value = "";
     document.getElementById("results").classList.remove("active");
   }
@@ -567,6 +572,8 @@ function 切换模式(mode) {
   // 子模式只对判决书模式有意义，合同模式走自己那套锚点校验
   document.getElementById('submode-switch').style.display = mode === 'judgment' ? 'flex' : 'none';
   const 提示 = document.getElementById('formatHint');
+  // 合同模式下比对时效的基准日是签署/履行日，不叫"案发"
+  document.getElementById('dateLabel').textContent = mode === 'contract' ? '签署时间' : '案发时间';
   if (mode === 'case') {
     document.getElementById('caseNameLabel').textContent = '纠纷名称';
     document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：合伙纠纷';
@@ -657,6 +664,7 @@ function 清空() {
 // ---- 开始分析 ----
 async function 开始分析() {
   const name = document.getElementById("caseName").value.trim();
+  const date = document.getElementById("caseDate").value.trim();
   const text = document.getElementById("caseText").value.trim();
 
   if (!text) {
@@ -674,7 +682,7 @@ async function 开始分析() {
     const response = await fetch("/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name || '', text: text, mode: 当前模式, submode: 子模式 })
+      body: JSON.stringify({ name: name || '', text: text, mode: 当前模式, submode: 子模式, case_date: date })
     });
 
     const data = await response.json();

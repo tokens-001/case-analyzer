@@ -249,6 +249,10 @@ def 分析路由():
     判例 = data.get("text", "").strip()
     分析模式 = data.get("mode", "judgment")  # judgment=判决书 case=案情分析 contract=合同审查
     子模式 = data.get("submode", "read")
+    # 案发时间：可选。不填只是"时效这一维没校验"（校验层会把它算进未校验，等级封顶在 中），
+    # 填了但读不懂也一样封 —— 区别只在于要出声告诉用户他填坏了。
+    # 这里原样透传：认不认、截多长都由 规范案发日期 判，别在边界上再实现一遍校验。
+    案发时间 = data.get("case_date")
 
     if len(判例名) > 80:
         return jsonify({"error": "判例名称过长（最多80字）"}), 400
@@ -315,8 +319,6 @@ def 分析路由():
                 总结 = contract_skills.总结(判例, 合同类型, 结果, api_key)
             except Exception as e:
                 总结 = f"【总结失败】{str(e)[:200]}"
-            审查警告 = list(无条号警告) + ([f"合同被截断到 15000 字，后 {len(带锚点文本) - 15000} 字未参与审查"
-                                        if 被截断 else []])
         else:
             tasks = {"结构化摘要": structure_summary, "程序问题识别": identify_procedural_issues}
             if 子模式 == "audit":
@@ -361,7 +363,7 @@ def 分析路由():
     # ── 本地校验层（各模式共用，判据只算一次）──
     # classify_law_citations / verify_clause_anchors 各自是其维度的唯一出口，
     # 风险列表与可信度评分都读结果，不各自判断真伪。
-    法条校验 = classify_law_citations(法条库目录, "", *全部分析)
+    法条校验 = classify_law_citations(法条库目录, 案发时间, *全部分析)
     法条对照 = 法条校验["可验证"]          # 前端沿用这个键，契约不变
     条款校验 = verify_clause_anchors(条款表, *全部分析) if 分析模式 == "contract" else None
     审查警告 = list(无条号警告)
