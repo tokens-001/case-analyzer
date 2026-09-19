@@ -3,8 +3,9 @@
 
     python3 scripts/audit_history.py [日志路径]
 
-读 `data/case_log.txt`（历次真实跑出来的分析文本），把每段分析喂给
-`verify_laws.classify_law_citations`，汇总：
+读 `data/case_log.txt`（本机历次真实跑出来的分析文本；不在版本库里），
+把每段分析喂给 `verify_laws.classify_law_citations`，汇总：
+本机没跑过分析时，退到仓库自带的 `data/sample_analysis.txt` 演示一遍。
 
     可验证率      旧版和新版都算得出，但旧版把它和"库外"混在一起
     旧版红牌误伤率  旧版 `未找到` 那批里，有多少其实只是"库里没这部法"
@@ -26,6 +27,9 @@ from skills.legal.verify_laws import classify_law_citations, _提取法条引用
 根目录 = os.path.dirname(os.path.abspath(__file__)).rsplit("/scripts", 1)[0]
 法条库源 = os.path.join(根目录, "data", "laws")
 默认日志 = os.path.join(根目录, "data", "case_log.txt")
+样例输出 = os.path.join(根目录, "data", "sample_analysis.txt")   # 新克隆没跑过分析时的兜底
+
+
 def _切段(日志路径):
     """按分隔线切成一段段分析文本（每段 = 一个技能的输出）。
 
@@ -91,14 +95,21 @@ def 审计(日志路径):
 
 def main():
     日志 = sys.argv[1] if len(sys.argv) > 1 else 默认日志
+    兜底 = False
     if not os.path.exists(日志):
-        print(f"找不到日志：{日志}", file=sys.stderr)
-        return 2
+        if 日志 == 默认日志 and os.path.exists(样例输出):
+            日志, 兜底 = 样例输出, True       # 本机没跑过分析，用仓库自带的样例
+        else:
+            print(f"找不到分析文本：{日志}\n"
+                  f"      传个路径进来即可，或用仓库自带的 data/sample_analysis.txt",
+                  file=sys.stderr)
+            return 2
     r = 审计(日志)
     c = r["合计"]
-    print(f"数据源：{日志}")
-    print(f"历史分析 {r['段数']} 段，其中 {r['含引用的段数']} 段含法条引用；"
-          f"共 {r['全部引用']} 处引用\n")
+    print(f"数据源：{日志}" + ("（仓库自带样例，本机没有历史分析日志）" if 兜底 else ""))
+    print(f"历史分析 {r['段数']} 段，其中 {r['含引用的段数']} 段含**可校验**引用；"
+          f"引用共 {r['全部引用']} 处 = 可校验 {c['提取到的引用']} + 只写法名 {c['无条号']} "
+          f"+ 无法定位 {c['未识别']}\n")
     print(f"  可验证     {c['可验证']:>4}  ({c['可验证'] / max(1, r['全部引用']):.0%})")
     print(f"  疑似编造   {c['疑似编造']:>4}   ← 库里有这部法、却没有这个条号")
     print(f"  库外       {c['库外']:>4}   ← 库里没这部法，**不代表引用有误**")

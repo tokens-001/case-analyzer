@@ -5,6 +5,16 @@ __pycache__/
 .DS_Store
 *.swp
 *.swo
+# 分两类，别混：
+#   跟踪 —— data/laws/*.txt      校验层的源码依赖
+#           data/case_input/     样例输入（clone 完得有东西可试）
+#           data/sample_analysis.txt  样例输出，audit_history.py 的兜底数据
+#   不跟踪 —— 本机跑出来的东西，别人拿到也没意义
+#           data/case_log.txt    历次分析日志（audit_history.py 优先读它）
+#           data/laws/missing_laws.txt  跑出来的补库清单
+#           data/case_data/      应用真正的写入目录（app.py:数据根目录）
 data/case_data/
+data/case_log.txt
+data/laws/missing_laws.txt
 sessions/
 .memory-backup/
