@@ -85,7 +85,7 @@ python3 scripts/audit_history.py
 | LLM | DeepSeek API（多技能并行调用）|
 | 前端 | 原生 HTML / JS（Flask 模板渲染）|
 | 存储 | JSON 文件（会话隔离）|
-| 法条库 | 13 部法律文本（民法典各编、刑法、公司法等）|
+| 法条库 | 10 部法 / 16 个文本（民法典按编拆 7 个）；正文取国家法律法规数据库，两份以上 `.gov.cn` 转载页互校，见 `data/laws/LAW_FORMAT.md` |
 
 ## 快速开始
 
