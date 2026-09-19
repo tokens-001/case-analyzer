@@ -14,4 +14,7 @@ import tempfile
 _临时 = tempfile.mkdtemp(prefix="判例助手-测试数据-")
 os.environ["DATA_DIR"] = _临时
 os.environ.setdefault("DEEPSEEK_API_KEY", "sk-测试用不联网")
-os.environ.setdefault("FLASK_SECRET_KEY", "test-secret")
+# ⚠️ 这里**不要**再 setdefault 一个 FLASK_SECRET_KEY：设了它，`app._会话密钥()` 会直接
+#   走 env 分支返回，"密钥落盘复用 / 重启后还是同一份"这条路径在测试里就永远走不到，
+#   相关用例变成不会红的摆设。测试已经有独立的临时 DATA_DIR，密钥落在那儿即可。
+os.environ.pop("FLASK_SECRET_KEY", None)

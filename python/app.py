@@ -52,7 +52,6 @@ from skills.legal.score_analysis import (
 
 app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
-app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24).hex()
 
 @app.after_request
 def add_cors_headers(response):
@@ -65,6 +64,42 @@ def add_cors_headers(response):
 项目根 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 法条库目录 = os.environ.get("LAWS_DIR", os.path.join(项目根, "data/laws"))
 数据根目录 = os.environ.get("DATA_DIR", os.path.join(项目根, "data/case_data"))
+
+
+def _会话密钥():
+    """session 签名密钥：环境变量优先，否则**落盘一份**复用。
+
+    ⚠️ 原来这里是 `os.environ.get(...) or os.urandom(24).hex()` —— 每次起进程换一个。
+    而 uid 就存在签了名的 session 里、并且**是用户数据目录的名字**（`用户数据目录`），
+    所以密钥一变：历史、已存的报告、按人计的配额全部认不回来（文件还在盘上，但没人
+    能再叫出那个目录名）。gunicorn 多 worker 时更糟 —— 各 worker 各签各的，
+    同一个浏览器在请求之间被轮流拒签，等于每次访问都是新用户。
+    """
+    指定 = os.environ.get("FLASK_SECRET_KEY")
+    if 指定:
+        return 指定
+    路径 = os.path.join(数据根目录, "session_secret.key")
+    os.makedirs(数据根目录, exist_ok=True)
+    try:
+        with open(路径, encoding="utf-8") as f:
+            存 = f.read().strip()
+        if 存:
+            return 存
+    except FileNotFoundError:
+        pass
+    新 = os.urandom(24).hex()
+    try:
+        # O_EXCL：并发首启时谁先建谁说了算，后建的读那份 —— 不能各写各的
+        with os.fdopen(os.open(路径, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600),
+                       "w", encoding="utf-8") as f:
+            f.write(新)
+    except FileExistsError:
+        with open(路径, encoding="utf-8") as f:
+            return f.read().strip() or 新
+    return 新
+
+
+app.secret_key = _会话密钥()
 
 # ---- 0. 会话管理：每个浏览器一个独立ID，数据隔离 ----
 def 获取用户ID():
@@ -237,9 +272,14 @@ def 分析路由():
     ip = 获取客户端IP()
     # 先确认服务端能干活，再扣次数：原来先扣后查 key，配置缺失时
     # 每次请求都白烧一次配额，而用户看到的是"次数用完了"，原因却在服务端。
-    api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("DEEPSEEK_API_KEY")
+    # 只有一个端点：`_base.问AI` 打的是 api.deepseek.com。原来这里还兜底读
+    # ANTHROPIC_AUTH_TOKEN —— Anthropic 的 token 发给 DeepSeek 必然 401，
+    # 而报错会把人指向错的方向（"我明明配了 key"）。要接第二家得先有
+    # provider 表（名字→地址/模型名/取哪个 env），别在这里靠 or 猜。
+    api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
-        return jsonify({"error": "未设置 DEEPSEEK_API_KEY 环境变量"}), 500
+        return jsonify({"error": "服务端未设置 DEEPSEEK_API_KEY 环境变量"
+                                 "（本机可放 python/.env，部署方在进程环境里给）"}), 500
     if not 消耗次数(uid, ip):
         剩余 = 剩余次数查询(uid, ip)
         return jsonify({"error": f"今日分析次数已用完（每人{每日上限}次），请明天再来。", "剩余": 0, "上限": 每日上限}), 429
