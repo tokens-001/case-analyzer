@@ -1,6 +1,9 @@
 # 判例助手（Case Analyzer）
 
-AI 驱动的法律判例分析工具。输入一份判决书或案情描述，自动产出多维度法律分析报告，并对 AI 引用的法条做真实性校验、溯源和可信度评分。
+[![Test](https://github.com/tokens-001/case-analyzer/actions/workflows/test.yml/badge.svg)](https://github.com/tokens-001/case-analyzer/actions/workflows/test.yml)
+
+AI 驱动的法律判例分析工具。输入一份判决书或案情描述，自动产出多维度法律分析报告，
+并对 AI 引用的法条做可验证性校验（三态：可验证 / 疑似编造 / 库外）、原文溯源和可信度评分。
 
 ## 功能
 

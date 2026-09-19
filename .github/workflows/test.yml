@@ -1,0 +1,35 @@
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.14 = 本机实际在跑的版本（声明没人跑过的地板 = 承诺一个兑不了的东西）
+        # 3.12 = 想对外声称的下限
+        # 哪天 setup-python 装不上某个版本，把那个版本从矩阵里删掉 —— 不要留着让门常红。
+        python-version: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -r python/requirements.txt ruff pytest
+
+      # 门只卡这一组：未用导入(F4) + 未定义名/重复定义(F8)。
+      # 理由不是"洁癖"，是 _base.py 曾有 4 处 json.dumps 全在异常分支上、
+      # 而模块没 import json —— API 一超时/断网，本该返回的结构化错误自己先抛
+      # NameError。这类错只有走一次失败才暴露，所以值得钉在门上。
+      #
+      # 不用 ruff 默认全量规则：本机实测还剩 66 条 F541/E5/E7 存量，
+      # 那样装的门第一天就红，红两周就没人再看门 —— 装一扇没人看的门比不装更坏。
+      # 存量按形状单独清，别混进门禁。
+      - run: ruff check python scripts tests --select F4,F8
+
+      - run: python -m pytest tests/ -q
+
+      # 不放 audit_history.py：它在 CI 上只能读到仓库自带的 1 段样例，
+      # 那个读数（覆盖面百分比）会被当成全量结论误读。它是本地分析工具，不是门禁。
