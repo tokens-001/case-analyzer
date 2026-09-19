@@ -10,8 +10,12 @@
 import io
 import os
 import sys
+import tempfile
 import zipfile
 
+# 两种跑法都要隔离：pytest 走 tests/conftest.py，直接 python3 tests/xxx.py 不走 conftest。
+# 不隔离的话限流计数会写进 data/case_data/limit_ip_*.json —— 和人在浏览器里是同一个桶。
+os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="判例助手-测试数据-"))
 os.environ.setdefault("DEEPSEEK_API_KEY", "sk-测试用不联网")
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "python"))
 

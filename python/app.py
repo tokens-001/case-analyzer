@@ -235,12 +235,14 @@ def 分析路由():
     # ── 限流 & 校验 ──
     uid = 获取用户ID()
     ip = 获取客户端IP()
-    if not 消耗次数(uid, ip):
-        剩余 = 剩余次数查询(uid, ip)
-        return jsonify({"error": f"今日分析次数已用完（每人{每日上限}次），请明天再来。", "剩余": 0, "上限": 每日上限}), 429
+    # 先确认服务端能干活，再扣次数：原来先扣后查 key，配置缺失时
+    # 每次请求都白烧一次配额，而用户看到的是"次数用完了"，原因却在服务端。
     api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
         return jsonify({"error": "未设置 DEEPSEEK_API_KEY 环境变量"}), 500
+    if not 消耗次数(uid, ip):
+        剩余 = 剩余次数查询(uid, ip)
+        return jsonify({"error": f"今日分析次数已用完（每人{每日上限}次），请明天再来。", "剩余": 0, "上限": 每日上限}), 429
 
     data = request.json
     判例名 = data.get("name", "").strip()
