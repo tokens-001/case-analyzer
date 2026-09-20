@@ -80,6 +80,43 @@ def test_历史区在主栏内_反馈区在结果区内():
     assert p.包含.get('反馈区在结果区内'), "反馈区不在 #results 里 —— 点「清空」结果没了、问卷还留着"
 
 
+def test_写死隐藏的元素必须有人负责把它显示出来():
+    """内联 `display:none` 是「先藏着，等有内容再显示」的约定。可如果没有任何一行 JS
+    碰过那个 id，它就是个永远不显示的死元素 —— 而上面那些结构测试**全都不会红**。
+
+    `result-hero` 就这么隐了一整个版本：它装着「分析可信度」仪表盘和「总结」，
+    JS 里那句 `trust-dashboard.style.display = "flex"` 设得一丝不苟，
+    可父节点是 none，设了也白设 —— 用户从来没见过这两样东西。
+    判据只能是「有没有人碰过这个 id」，静态结构查不出来。
+    """
+    标签们 = re.findall(r'<[^>]+>', 页面)
+    藏着 = sorted({i for t in 标签们
+                   for i in re.findall(r'id="([\w-]+)"', t)
+                   if re.search(r'style="[^"]*display:\s*none', t)})
+    assert 藏着, "一个写死隐藏的元素都没扫到 —— 多半是这段正则失效了，不是页面变干净了"
+    # 两种引号都要认：这个文件里两种都有在用，只认一种会漏判
+    没接线的 = [i for i in 藏着
+                if f'getElementById("{i}")' not in 页面 and f"getElementById('{i}')" not in 页面]
+    assert not 没接线的, (
+        f"这些元素写死了 display:none，却没有任何一行 JS 碰过它们：{没接线的} —— "
+        f"它们永远不会显示。要么接上显隐，要么从 HTML 里删掉，别留在页面里当摆设")
+
+
+def test_总结必须真的渲染到页面上():
+    """「总结」是这份报告里唯一回答「那我该怎么办」的一段，而它踩过两个坑：
+    ① 卡片循环开头 `if (key === "总结" …) continue` 把它跳过了（它不该是卡片）；
+    ② 装它的 .result-hero 写死 display:none，没人解除。
+    两条加起来的结果是：提示词里写得再好，用户也一个字看不到。"""
+    # 取节点有两种写法（清空节点() 内部才调 getElementById），两种都认
+    assert ('清空节点("quick-summary")' in 页面
+            or 'getElementById("quick-summary")' in 页面), \
+        "没有把 总结 填进 #quick-summary —— 那它就是个空壳"
+    assert 'getElementById("result-hero")' in 页面, \
+        ".result-hero 没人解除隐藏，里面的可信度仪表盘和总结都不会显示"
+    # 渲染必须走 元素()（内部是 textContent），不能拼进 innerHTML：总结是模型输出
+    assert '元素("div", "q-text", 结论)' in 页面, "总结没走 元素() 建节点"
+
+
 def test_不再有_9999_那种魔数判断():
     代码行 = [行 for 行 in 页面.splitlines()
              if '9999' in 行 and not 行.strip().startswith(('//', '*', '/*'))]

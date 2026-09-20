@@ -14,7 +14,7 @@ import zipfile
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "python"))
 
 import parse_doc                                            # noqa: E402
-from skills.legal import score_analysis, verify_clauses     # noqa: E402
+from skills.legal import contract_skills, score_analysis, verify_clauses    # noqa: E402
 
 条款正文 = {
     '一': '第一条 标的。乙方向甲方提供系统运维服务，详见附件一。',
@@ -343,6 +343,37 @@ def test_有可验证锚点且无未校验项才判高():
     条款 = _合同校验(可验证=[{'引用条号': '三'}], 已校验数=1)
     可信度 = score_analysis.compute_trust_score({"通过": True, "问题": []}, 法条, None, 条款校验=条款)
     assert 可信度['等级'] == '高', 可信度
+
+
+# ─────────────── 总结：报告里唯一回答"那我该怎么办"的一段 ───────────────
+
+def test_总结必须回答对方不让步时怎么办():
+    """这份报告的前七维都在说「哪里有问题」，只有『总结』回答「那我该怎么办」。
+
+    而它原来只答「能不能签 + 先解决什么」。可『谈判顺序』给出的结论是
+    「必须改（不改就不该签）」—— 那是个**签约决策**，全链路却没有一处告诉用户
+    「对方就是不让步时，你还能做什么」。等于把最难的那个决定丢给他就走了。
+    这条测试钉的是：退路那部分必须留在提示词里，且不许退化成套话。
+
+    不用 monkeypatch 夹具：本文件末尾的 __main__ 跑法是无参直调，
+    挂了夹具它就只能在 pytest 下跑。
+    """
+    抓到 = {}
+    原 = contract_skills.问AI
+    contract_skills.问AI = lambda 提示, *a, **k: 抓到.setdefault("提示", 提示)
+    try:
+        contract_skills.总结('第一条 标的。乙方向甲方提供运维服务。', "通用",
+                             {"风险清单": '- 【第九条】「甲方有权单方调岗」'}, "假key")
+    finally:
+        contract_skills.问AI = 原
+    提示 = 抓到.get("提示", "")
+
+    assert "退路" in 提示, "总结里没有『对方不让步怎么办』这一部分，用户拿到的还是只有结论"
+    # 只写"给个退路"不够 —— 模型默认会写「建议协商」这种听着对、做不了的话
+    assert "你下一步做什么" in 提示, "没要求退路具体到动作，模型会写一堆套话"
+    能做的 = [x for x in ("不签这一份", "换一家", "先不付定金", "问一次执业律师") if x in 提示]
+    assert len(能做的) >= 3, f"退路没给出可挑的清单（至少要三项真能做的事），只扫到：{能做的}"
+    assert "建议协商" in 提示, "没点名禁掉『建议协商』这类空话 —— 那正是模型默认会写的"
 
 
 if __name__ == "__main__":

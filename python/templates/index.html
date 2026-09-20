@@ -226,6 +226,8 @@
     padding: 18px 22px; margin-bottom: 16px;
   }
   .quick-summary { margin-top: 12px; }
+  .quick-summary .q-label { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+  .quick-summary .q-text { font-size: 15px; color: var(--text); line-height: 1.9; white-space: pre-wrap; margin-top: 4px; }
   .detail-section {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 12px; padding: 16px 20px; margin-bottom: 16px;
@@ -618,7 +620,7 @@ const 人话标题 = {
   "风险清单": "哪些条款对你不利", "缺失条款": "合同里没写的", "失衡条款": "权利义务不对等的",
   "歧义表述": "写得含糊、日后会吵的", "谈判顺序": "先争哪条、后让哪条",
   "改法建议": "改成这样（可直接替换）", "新增条款": "缺的条款，补这么写",
-  "合同类型": "我们把它当成哪类合同", "总结": "一句话结论",
+  "合同类型": "我们把它当成哪类合同", "总结": "结论和下一步",
 };
 function 叫法(键) { return 人话标题[键] || 键; }
 
@@ -931,6 +933,19 @@ function 渲染结果(data) {
   } else {
     riskSection.style.display = "none";
   }
+
+  // 可信度仪表盘 + 结论都装在 .result-hero 里，而它在 HTML 里写死 `display:none`。
+  // ⚠️ 原来全文件没有任何一行解除过它 —— 下面那句 trust-dashboard.style.display="flex"
+  //    设得再对，父节点是 none 也白设。结果是「分析可信度」和「能不能签」这两样
+  //    **从来没对用户显示过**（静态 HTML 测试查不出来，它不问显不显示）。
+  //    显隐在这里统一决定：可信度和结论有一样能显示，就显示整块。
+  const 结论 = (a && a.总结) || "";
+  const 结论节 = 清空节点("quick-summary");
+  if (结论) {
+    结论节.appendChild(元素("div", "q-label", 叫法("总结")));
+    结论节.appendChild(元素("div", "q-text", 结论));
+  }
+  document.getElementById("result-hero").style.display = (data.可信度 || 结论) ? "" : "none";
 
   // 可信度仪表盘（只显示等级+明细，不显示伪精确数字分）
   if (data.可信度) {
