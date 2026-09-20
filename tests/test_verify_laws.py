@@ -37,6 +37,54 @@ def _假法条库():
 
 # ─────────────── 提取与数字归一 ───────────────
 
+def test_检索范围不含META():
+    """LAW_FORMAT.md 一直写着"META 块内的内容不会被当作条文检索"，但代码从没做到。
+    实测：新补的《劳动法》在 `核对:` 里写了"第44条「工作」…"，于是引用《劳动法》第44条
+    会**在这段互校记录里命中**，返回给用户看的"条文"其实是来源说明 —— 假绿灯。
+    """
+    目录 = _假法条库()
+    try:
+        路径 = os.path.join(目录, "测试法.txt")
+        原 = open(路径, encoding="utf-8").read()
+        # 在 META 里造一条"看起来像条文标题"的互校记录，正文里却没有第99条
+        open(路径, "w", encoding="utf-8").write(
+            原.replace("#END", "核对: 2026-09-20 第99条与另一源一致\n#END"))
+        出 = verify_laws.classify_law_citations(目录, None, "依据《测试法》第99条办理。")
+        assert 出["可验证"] == [], f"META 里的条号被当成条文核到了：{出['可验证']}"
+        assert 出["疑似编造"] and "99" in 出["疑似编造"][0], 出["疑似编造"]
+    finally:
+        shutil.rmtree(目录, ignore_errors=True)
+
+
+def test_库里每一部法都记着来源和核对():
+    """补库的规矩是"两份以上独立 .gov.cn 逐条互校"，而规矩唯一的**可查证据**就是这两行。
+    没记来源的文件，等于下次有人手打补全也没人发现。
+    刑法是已知例外（只做过结构修复、正文没互校）——写死在这儿，补它的人必须一起改这里。
+    """
+    未记 = []
+    for 文件名 in sorted(os.listdir(法条库)):
+        if not 文件名.endswith(".txt") or 文件名 == "missing_laws.txt":
+            continue
+        头 = open(os.path.join(法条库, 文件名), encoding="utf-8").read().split("#END")[0]
+        if 文件名 == "刑法.txt":
+            continue
+        if "来源:" not in 头 or "核对:" not in 头:
+            未记.append(文件名)
+    assert not 未记, f"这些文件没有互校来源，正文可能是手打的：{未记}"
+
+
+def test_劳动与调解仲裁法已入库且关键条文查得到():
+    """这两部是模型真引过的（引了却报"库里没这部法"）。补库不是攒数量，是把误报关掉。"""
+    出 = verify_laws.classify_law_citations(
+        法条库, None,
+        "依《劳动法》第四十四条支付加班费；依《劳动争议调解仲裁法》第二十一条确定管辖；"
+        "并见《劳动合同法》第85条。")
+    assert 出["库外"] == [] and 出["疑似编造"] == [], 出
+    assert len(出["可验证"]) == 3, [x["引用"] for x in 出["可验证"]]
+    加班 = next(x for x in 出["可验证"] if "劳动法" in x["法名"] and x["引用"].endswith("四十四条"))
+    assert "百分之一百五十" in 加班["条文"], 加班["条文"][:80]
+
+
 def test_中文条文号转数字():
     assert verify_laws._文章号转数字("六百六十七") == 667
     assert verify_laws._文章号转数字("123") == 123
