@@ -67,7 +67,43 @@ def 体检(文件名, 全文):
     return 出
 
 
+def 清理补库清单():
+    """把 missing_laws.txt 里**现在其实已经查得到**的行划掉。
+
+    这张清单是只追加的：`_记录库外引用` 只在写新行时去重，从不回头查旧行。
+    2026-09-20 实测 42 行里 32 行的法条库早就有了（库重建过、清单没跟）——
+    照着它补库会去补一批已经存在的法，而它同时把"库还差多少"报得虚高。
+
+    规则只有一条：**重跑一遍校验器，现在仍判"库外"的才留**。
+    顺带清掉两类老噪音：`参照本法第X条`（相对指代，现在走"未识别"，本来就不该在补库清单里）、
+    以及被截断的半条引用（`《民法典》第一千`）。
+
+    跑法：python3 scripts/check_law_library.py --清理补库清单
+    """
+    sys.path.insert(0, os.path.join(根目录, "python"))
+    from skills.legal.verify_laws import classify_law_citations
+    路径 = os.path.join(法条库, "missing_laws.txt")
+    if not os.path.exists(路径):
+        print("没有 missing_laws.txt，不用清")
+        return 0
+    行们 = [行 for 行 in open(路径, encoding="utf-8").read().splitlines() if 行.strip()]
+    留, 删 = [], []
+    for 行 in 行们:
+        引用 = 行.split("\t")[-1].strip()
+        出 = classify_law_citations(法条库, None, f"依据{引用}办理。")
+        (留 if 引用 in 出["库外"] else 删).append((行, 引用))
+    with open(路径, "w", encoding="utf-8") as f:
+        for 行, _ in 留:
+            f.write(行 + "\n")
+    print(f"补库清单 {len(行们)} 行 → 留 {len(留)} 行 · 划掉 {len(删)} 行（库里现在查得到，或不该记在这儿）")
+    for _, 引用 in 删:
+        print(f"  - {引用}")
+    return 0
+
+
 def main():
+    if "--清理补库清单" in sys.argv:
+        return 清理补库清单()
     有问题的文件 = 0
     合计 = {"META": 0, "缺号": 0, "错配": 0, "埋着的标题": 0}
     for 文件名 in sorted(os.listdir(法条库)):

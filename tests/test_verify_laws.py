@@ -37,6 +37,31 @@ def _假法条库():
 
 # ─────────────── 提取与数字归一 ───────────────
 
+def test_补库清单只留现在真查不到的():
+    """清单是只追加的：库重建之后旧行不会自己消失。2026-09-20 实测 42 行里 32 行
+    早就查得到 —— 照它补库会去补一批已存在的法，还把"库差多少"报得虚高。
+    这条测的是那个清理动作的判据（用临时库，绝不碰 data/laws/missing_laws.txt）。
+    """
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+    import check_law_library
+    目录 = _假法条库()
+    try:
+        with open(os.path.join(目录, "missing_laws.txt"), "w", encoding="utf-8") as f:
+            f.write("2026-01-01\t《测试法》第5条\n"        # 库里查得到 → 该划掉
+                    "2026-01-01\t《参照不到的法》第9条\n"    # 真库外 → 该留
+                    "2026-01-01\t参照本法第七百九十三条\n")  # 相对指代 → 不该在清单里
+        原库 = check_law_library.法条库
+        check_law_library.法条库 = 目录
+        try:
+            assert check_law_library.清理补库清单() == 0
+        finally:
+            check_law_library.法条库 = 原库
+        剩 = [行 for 行 in open(os.path.join(目录, "missing_laws.txt"), encoding="utf-8").read().splitlines() if 行.strip()]
+        assert 剩 == ["2026-01-01\t《参照不到的法》第9条"], 剩
+    finally:
+        shutil.rmtree(目录, ignore_errors=True)
+
+
 def test_检索范围不含META():
     """LAW_FORMAT.md 一直写着"META 块内的内容不会被当作条文检索"，但代码从没做到。
     实测：新补的《劳动法》在 `核对:` 里写了"第44条「工作」…"，于是引用《劳动法》第44条
