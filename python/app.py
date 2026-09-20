@@ -192,17 +192,49 @@ def _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风�
     return 文件名
 
 # ---- 9. 每日次数限制 ----
+# 0 = 不限。这个上限是给**陌生访客**准备的：线上部署时防止别人拿你的 key 刷钱。
+# 本机访问（socket 对端是 127.x / ::1）不受它管 —— 见下面 是本机访问()。
 每日上限 = int(os.environ.get("DAILY_LIMIT", "20"))
+# 只有确认前面挂了反向代理时才读 X-Forwarded-For；直连时那个头是客户端自己写的。
+信任代理头 = os.environ.get("USE_PROXY_HEADERS") == "1"
 
 def 获取客户端IP():
-    """获取真实客户端IP，优先取代理转发的头（PythonAnywhere会设X-Forwarded-For）"""
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """限流用的客户端地址：以 **socket 对端** 为准。
+
+    ⚠️ 原来无条件优先取 `X-Forwarded-For` —— 那是客户端可以自己编的请求头，
+    等于任何人都能靠换一个头把自己的配额刷新成无限，这个上限就只剩装饰作用。
+    确实挂在反代后面时（USE_PROXY_HEADERS=1）才读它，并且取**最右**一跳：
+    那一跳是你自己的代理追加的，外面伪造不了。
+    """
+    if 信任代理头:
+        列 = [x.strip() for x in request.headers.get("X-Forwarded-For", "").split(",") if x.strip()]
+        if 列:
+            return 列[-1]
     return request.remote_addr or "未知IP"
 
+def 是本机访问():
+    """作者自己在这台机器上用，不该被"防陌生人"的门挡住。
+
+    只看 `request.remote_addr`，**不看 X-Forwarded-For** —— 否则一个头就能从外面
+    冒充本机、把配额整个绕过去。
+    """
+    地址 = request.remote_addr or ""
+    return 地址 == "::1" or 地址.startswith("127.")
+
+def 不限次():
+    """这一路请求要不要计次。两种豁免：显式关掉上限（DAILY_LIMIT=0），或本机访问。
+
+    限流是给**陌生访客**准备的（防止线上被人拿你的 key 刷钱）。作者自己在这台
+    机器上调试时，它只会变成"每改一次提示词就只能试 20 次"这种纯摩擦 ——
+    而本机浏览器和测试客户端的 socket 对端都是 127.0.0.1，正是被误伤的那一批。
+    """
+    return 每日上限 <= 0 or 是本机访问()
+
 def 剩余次数查询(uid, ip):
-    """仅查询剩余次数，不消耗。返回 {'剩余': int, '上限': int}"""
+    """仅查询剩余次数，不消耗。返回 {'剩余': int|None, '上限': int|None}
+    —— None = 这一路不受限（本机访问，或 DAILY_LIMIT=0）。"""
+    if 不限次():
+        return {"剩余": None, "上限": None}
     今天 = str(date.today())
     用户计数文件 = os.path.join(用户数据目录(), f"limit_{今天}.json")
     IP计数文件 = os.path.join(数据根目录, f"limit_ip_{今天}.json")
@@ -221,6 +253,8 @@ def 剩余次数查询(uid, ip):
 
 def 消耗次数(uid, ip):
     """消耗一次分析次数（UID+IP双轨记录）。返回True=可用，False=已用完"""
+    if 不限次():
+        return True         # 不写计数文件：本机调试不该往盘上堆当天没用的计数
     今天 = str(date.today())
     用户计数文件 = os.path.join(用户数据目录(), f"limit_{今天}.json")
     IP计数文件 = os.path.join(数据根目录, f"limit_ip_{今天}.json")

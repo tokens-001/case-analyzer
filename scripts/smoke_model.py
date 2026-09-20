@@ -97,7 +97,8 @@ def main():
     本 = _读数(数)
     print(f"输入：{os.path.basename(输入)}（{len(文本)} 字）· 模式 judgment"
           + (f" · 桩替换 {桩数} 个模块" if 桩数 else ""))
-    print(f"剩余配额：{数.get('剩余次数')}/{数.get('今日上限')}")
+    余 = 数.get("剩余次数")
+    print("配额：" + ("本机 · 不限次" if 余 is None else f"本次后剩 {余}/{数.get('今日上限')}"))
     for 键, 值 in 本.items():
         print(f"  {键:10} {值}")
     print("  明细：")

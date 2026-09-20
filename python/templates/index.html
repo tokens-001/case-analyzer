@@ -610,8 +610,9 @@ async function 刷新剩余次数() {
   try {
     const resp = await fetch("/remaining");
     const data = await resp.json();
-    if (data.上限 >= 9999) {
-      document.getElementById("remaining").textContent = '测试版 · 不限次';
+    // 后端不再用 9999 这种魔数表示"不限"，而是直接给 null
+    if (data.上限 === null || data.上限 === undefined) {
+      document.getElementById("remaining").textContent = '本机 · 不限次';
     } else {
       document.getElementById("remaining").textContent = `今日剩余 ${data.剩余}/${data.上限} 次`;
     }
