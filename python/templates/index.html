@@ -179,6 +179,14 @@
     transition: border-color .2s;
   }
   .card:hover { border-color: var(--navy); }
+  /* 卡片角上那两个键：问的是"这一条你能不能用上"，比整份报告级那句"哪个模块最没用"准得多 */
+  .card-foot { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+  .rate-btn {
+    font-size: 12px; padding: 4px 10px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--surface); color: var(--text-dim); cursor: pointer;
+  }
+  .rate-btn:hover { border-color: var(--navy); color: var(--navy); }
+  .rate-done { font-size: 12px; color: var(--green); }
   .card h3 { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
   /* 正文是给人读的那一层，13px 在手机上偏小；标签/明细这类辅助信息才留在 11-12px */
   .card .content { font-size: 14px; color: var(--text); white-space: pre-wrap; line-height: 1.9; }
@@ -347,7 +355,7 @@
     /* 主操作要够大够好点：分析一次要等近一分钟，误点在"清空"上的代价不小 */
     .btn { padding: 12px 20px; font-size: 14px; }
     .btn-row { gap: 6px; }
-    .fb-radio, .fb-chip { padding: 10px 14px; font-size: 13px; }
+    .fb-radio { padding: 10px 14px; font-size: 13px; }
   }
 </style>
 </head>
@@ -491,17 +499,13 @@
       </div>
 
       <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">2. 哪几部分你最用得上？（可多选，可跳过）</div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-valuable"></div>
+        <div style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">
+          哪一部分有用、哪一部分没看懂，<b>直接在每张卡片下面点</b>就行 —— 比在这回忆"哪个模块最没用"准得多。
+        </div>
       </div>
 
       <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">3. 哪几部分你希望我们删掉？（可多选，可跳过 —— 这题直接决定下一个版本砍什么）</div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-useless"></div>
-      </div>
-
-      <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">4. 遇到了什么问题？（可选）</div>
+        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">2. 遇到了什么问题？（可选）</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;" id="q-issues">
           <label class="fb-radio"><input type="radio" name="issue_type" value="ai_error"> 分析内容不对</label>
           <label class="fb-radio"><input type="radio" name="issue_type" value="law_error"> 法律条文引用错了</label>
@@ -513,7 +517,7 @@
       </div>
 
       <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">5. 补充意见（选填）</div>
+        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">3. 补充意见（选填）</div>
         <textarea id="feedbackComment" placeholder="任何想说的……" style="width:100%; height:64px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text-bright); font-size:14px; font-family:inherit; resize:vertical;"></textarea>
       </div>
 
@@ -535,15 +539,6 @@
       .fb-radio:hover { border-color:var(--text-dim); color:var(--text); }
       .fb-radio:has(input:checked) { border-color:var(--navy); color:var(--navy); background:#eef2f7; }
       .fb-radio input { display:none; }
-      .fb-chip {
-        display:inline-flex; align-items:center; gap:4px;
-        padding:5px 12px; border:1px solid var(--border); border-radius:4px;
-        font-size:12px; color:var(--text-dim); cursor:pointer;
-        transition: all .2s; background:var(--surface2);
-      }
-      .fb-chip:hover { border-color:var(--text-dim); color:var(--text); }
-      .fb-chip:has(input:checked) { border-color:var(--green); color:var(--green); background:#eef6f0; }
-      .fb-chip input { display:none; }
     </style>
 
   <!-- 历史记录：必须在 .main 里面。原来这里多一个 </div> 把 .main 提前收掉，
@@ -784,6 +779,38 @@ function 显示错误(msg) {
   刷新剩余次数();
 }
 
+// ---- 卡片角上的「有用 / 没看懂」----
+function 逐条评价键(维度) {
+  const 脚 = 元素("div", "card-foot");
+  [["helpful", "有用"], ["unclear", "没看懂"]].forEach(([值, 字]) => {
+    const 键 = 元素("button", "rate-btn", 字);
+    键.type = "button";
+    键.dataset.评价 = 值;
+    键.addEventListener("click", () => 提交逐条(脚, 维度, 值));
+    脚.appendChild(键);
+  });
+  return 脚;
+}
+
+async function 提交逐条(脚, 维度, 值) {
+  const r = window._lastResult || {};
+  try {
+    const 回 = await fetch("/rate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dimension: 维度, rating: 值, report: r.报告文件 || "",
+                             case_name: r.判例名 || "", 等级: r.可信度?.等级,
+                             覆盖度: r.可信度?.覆盖度 })
+    });
+    if (!回.ok) { 脚.appendChild(元素("span", "", "这条没记下，再点一次试试")); return; }
+  } catch (e) {
+    // 记下失败必须说出来：这些点数是唯一能回答"哪一维白做了"的证据
+    脚.appendChild(元素("span", "", "网络不通，这条没记下")); return;
+  }
+  脚.querySelectorAll(".rate-btn").forEach(b => b.remove());
+  脚.appendChild(元素("span", "rate-done",
+    值 === "helpful" ? "✓ 记下了：这一条有用" : "✓ 记下了：这一条没看懂"));
+}
+
 // ---- 渲染结果 ----
 function 渲染结果(data) {
   document.getElementById("loading").classList.remove("active");
@@ -873,6 +900,7 @@ function 渲染结果(data) {
     const card = 元素("div", "card");
     card.appendChild(元素("h3", "", `${图标[key] || "📌"} ${叫法(key)}`));
     card.appendChild(元素("div", "content", val));
+    card.appendChild(逐条评价键(key));
     grid.appendChild(card);
   }
 
@@ -961,23 +989,8 @@ function 渲染结果(data) {
   document.getElementById("feedback-done").style.display = "none";
   document.getElementById("feedback-err").style.display = "none";
 
-  // 反馈选项：用**给人看的那套名字**做标签，内部键名走 value。
-  // 原来标签和 value 都是键名 —— 卡片已经换成人话，问卷却还在问"哪个模块最没用"，
-  // 而用户看到的是他从没见过的词。
-  const analysisKeys = Object.keys(a).filter(k => k !== "总结" && a[k]);
-  const commonModules = ["可信度评分", "一句话结论"];
-  const allOptions = [...analysisKeys, ...commonModules];
-  [["q-valuable", allOptions], ["q-useless", allOptions]].forEach(([容器, 项]) => {
-    const 格 = 清空节点(容器);
-    项.forEach(k => {
-      const 签 = 元素("label", "fb-chip");
-      const 框 = document.createElement("input");
-      框.type = "checkbox"; 框.value = k;
-      签.appendChild(框);
-      签.appendChild(document.createTextNode(` ${叫法(k)}`));
-      格.appendChild(签);
-    });
-  });
+  // 问卷里那两题"哪个模块最有价值 / 最没用"已经撤掉：卡片角上有逐条的
+  // 「有用 / 没看懂」，那才是能落到维度上的证据。
   // 清除上次勾选和文字
   document.querySelectorAll("#feedback-section input[type=radio], #feedback-section input[type=checkbox]").forEach(el => el.checked = false);
   document.getElementById("feedbackComment").value = "";
@@ -985,11 +998,6 @@ function 渲染结果(data) {
 }
 
 // ---- 反馈 ----
-function 收集选中值(容器ID) {
-  const checks = document.querySelectorAll(`#${容器ID} input:checked`);
-  return Array.from(checks).map(c => c.value);
-}
-
 function 反馈报错(文字) {
   const 位 = document.getElementById("feedback-err");
   位.textContent = 文字;
@@ -1012,8 +1020,6 @@ async function 提交反馈() {
         case_name: window._lastResult?.判例名 || "未知",
         date: new Date().toISOString().slice(0, 10),
         helpfulness: helpfulness.value,
-        most_valuable: 收集选中值("q-valuable"),
-        least_valuable: 收集选中值("q-useless"),
         issue_types: issueType ? [issueType.value] : [],
         comment: comment
       })

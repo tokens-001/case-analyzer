@@ -182,14 +182,18 @@ def _核验快照(可信度, 验证, 风险列表, 法条对照, 条款校验):
 
 
 def _写判决JSON(判例名, 数据):
-    """三种模式共用的落盘：文件名一律过 安全名，不给 "/" 和 ".." 留通路。"""
+    """三种模式共用的落盘：文件名一律过 安全名，不给 "/" 和 ".." 留通路。
+
+    返回的是**裸文件名**（不带目录）—— 它会被回给前端当"这份报告"的标识，
+    逐条反馈靠它把"哪一维没用"落到具体那份报告上；给绝对路径等于把目录结构泄露出去。
+    """
     文件夹 = 用户数据目录()
     今天 = str(date.today())
-    文件名 = os.path.join(文件夹, f"{今天}_{_安全名(判例名)}.json")
+    名 = f"{今天}_{_安全名(判例名)}.json"
     os.makedirs(文件夹, exist_ok=True)
-    with open(文件名, "w", encoding="utf-8") as f:
+    with open(os.path.join(文件夹, 名), "w", encoding="utf-8") as f:
         json.dump(数据, f, ensure_ascii=False)
-    return 文件名
+    return 名
 
 
 def _安全名(判例名):
@@ -410,6 +414,7 @@ def 分析路由():
 
     # 合同模式才有的变量，先给默认值 —— 下面那段校验就不用到处判模式
     条款表, 无条号警告, 合同类型, 类型得分 = {}, [], "", {}
+    报告文件 = ""
     各维输出, 锚点范围 = {}, []
 
     try:
@@ -583,15 +588,16 @@ def 分析路由():
         分析结果 = {名: 结果[名] for 名 in ("风险清单", "缺失条款", "失衡条款", "歧义表述",
                                         "改法建议", "新增条款", "谈判顺序")}
         分析结果["总结"] = 总结
-        _存储合同JSON(判例名, 合同类型, 分析结果, 核验=核验,
-                     时间基准=法条校验.get("案发日期") or 案发时间, 字数=len(判例))
+        报告文件 = _存储合同JSON(判例名, 合同类型, 分析结果, 核验=核验,
+                          时间基准=法条校验.get("案发日期") or 案发时间, 字数=len(判例))
     elif 分析模式 == "case":
         分析结果 = {
             "法律关系": 法律关系, "事实与证据": 事实证据,
             "对抗路径": 对抗路径, "风险推演": 风险推演,
             "行动建议": 行动建议, "总结": 总结,
         }
-        _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, 总结, 核验=核验)
+        报告文件 = _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议,
+                            总结, 核验=核验)
     else:
         分析结果 = {
             "结构化摘要": 结构, "核心争议": 争议,
@@ -599,8 +605,8 @@ def 分析路由():
             "对立解释路径": 对立路径, "论证完整性检查": 论证检查,
             "程序问题识别": 程序问题, "未回答问题": 未答,
         }
-        _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路径, 论证检查, 程序问题, 未答,
-                     核验=核验)
+        报告文件 = _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路径, 论证检查,
+                          程序问题, 未答, 核验=核验)
 
     return jsonify({
         "判例名": 判例名,
@@ -618,6 +624,7 @@ def 分析路由():
         # 合同模式专有：条款锚点三态 + 类型 + 条数（类型判不准时是"通用"，照实说）
         "条款校验": ({k: v for k, v in 条款校验.items()} if 条款校验 else None),
         "合同类型": 合同类型, "条数": len([k for k in 条款表 if k != '前言']),
+        "报告文件": 报告文件,
         # 键名 → 人话：下载件在这里翻译，前端用它自己的那份表（测试核对两边覆盖一致）。
         # 为什么后端也要带一份：`/download` 收到的就是 分析 那个 dict，翻译不在这里做
         # 就得在客户端做，而客户端翻译过的东西存进盘里还是行话。
@@ -689,6 +696,7 @@ def 详情路由(fname):
         return jsonify({
             "判例名": d.get("判例名", ""),
             "字数": d.get("字数", 0),
+            "报告文件": os.path.basename(路径),
             "模式": d.get("模式", ""),
             "合同类型": d.get("合同类型", ""),
             "分析": 分析字段,
@@ -872,6 +880,55 @@ def 反馈路由():
     return jsonify({"ok": True, "message": "感谢反馈！"})
 
 
+@app.route("/rate", methods=["POST"])
+def 逐条反馈路由():
+    """某一维「有用 / 没看懂」—— 比整份报告级那句"哪个模块最没用"准得多。
+
+    为什么值得多这一个口子：问卷问的是"你觉得哪块没用"，用户得先回忆再抽象；
+    点卡片角上那两下问的是"这一条你看完能不能用"。而且这里连**当时的核验读数**
+    一起存，于是能回答一个真正影响产品的问题：覆盖度低的报告，用户是不是更觉得没用。
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "请求体不是一份 JSON 对象"}), 400
+    维度 = data.get("dimension")
+    评价 = data.get("rating")
+    if 评价 not in ("helpful", "unclear"):
+        return jsonify({"error": "评价只能是「有用」或「没看懂」"}), 400
+    if not isinstance(维度, str) or 维度 not in 人话标题:
+        # 只收认识的维度名：否则打错一个字就多出一个没人统计的桶
+        return jsonify({"error": "不认识的模块名"}), 400
+    记录 = {
+        "维度": 维度, "评价": 评价,
+        "报告": (data.get("report") if isinstance(data.get("report"), str) else "")[:120],
+        "判例名": (data.get("case_name") if isinstance(data.get("case_name"), str) else "")[:80],
+        "等级": (data.get("等级") if isinstance(data.get("等级"), str) else "")[:4],
+        "覆盖度": data.get("覆盖度") if isinstance(data.get("覆盖度"), (int, float)) else None,
+        "时间": str(datetime.now())[:19],
+    }
+    目录 = os.path.join(用户数据目录(), "ratings")
+    os.makedirs(目录, exist_ok=True)
+    名 = f"{date.today()}_{datetime.now().strftime('%H%M%S-%f')}_{'好' if 评价 == 'helpful' else '懵'}.json"
+    with open(os.path.join(目录, 名), "w", encoding="utf-8") as f:
+        json.dump(记录, f, ensure_ascii=False)
+    return jsonify({"ok": True})
+
+
+def _收集逐条(uids):
+    全部 = []
+    for uid in uids:
+        目录 = os.path.join(数据根目录, uid, "ratings")
+        if not os.path.isdir(目录):
+            continue
+        for fname in sorted(os.listdir(目录)):
+            try:
+                with open(os.path.join(目录, fname), encoding="utf-8") as f:
+                    全部.append(json.load(f))
+            except Exception:
+                pass
+    return 全部
+
+
 def _收集反馈(uids):
     全部 = []
     for uid in uids:
@@ -955,9 +1012,30 @@ def 后台面板():
             # 这两项是决定"要不要砍掉某个模块"的直接输入，原来得自己去翻文件
             "被点名要删的模块": _计数(全部反馈, "最没用模块"),
             "被点名有用的模块": _计数(全部反馈, "最有价值模块"),
+            "逐条评价": _逐条统计(_收集逐条(os.listdir(数据根目录)) if os.path.exists(数据根目录) else []),
         }, ensure_ascii=False, indent=2),
         mimetype="application/json; charset=utf-8"
     )
+
+
+def _逐条统计(记录列表):
+    """按维度汇总「有用 / 没看懂」，并给一个看得懂的排序键。
+
+    看不懂率单独摆出来：它高说明**话术**有问题，不是分析有问题 —— 这两件事
+    会被同一个"这模块没用"混掉。
+    """
+    计 = {}
+    for x in 记录列表:
+        名 = x.get("维度") or "未标注"
+        桶 = 计.setdefault(名, {"有用": 0, "没看懂": 0})
+        if x.get("评价") == "helpful":
+            桶["有用"] += 1
+        elif x.get("评价") == "unclear":
+            桶["没看懂"] += 1
+    for 名, 桶 in 计.items():
+        总 = 桶["有用"] + 桶["没看懂"]
+        桶["看不懂率"] = round(桶["没看懂"] / 总, 2) if 总 else None
+    return dict(sorted(计.items(), key=lambda kv: -(kv[1]["没看懂"] + kv[1]["有用"])))
 
 
 def _计数(反馈列表, 键):

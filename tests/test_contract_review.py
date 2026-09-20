@@ -105,6 +105,79 @@ def test_风险条目没挂条号算未校验():
     assert len(果['无锚点条目']) == 2 and 果['未校验数'] == 2, 果
 
 
+# ─────────────── 必查表的依据必须是真条文，不是凭记忆写的 ───────────────
+
+def test_必查清单里引的条号全都在法条库里():
+    """这张表是"缺了哪一条"的判据来源。条号写错一个数字，工具就会拿一条**不存在的
+    依据**去指导普通人谈判 —— 而我们整个产品的立场是"不背书没核过的东西"。
+    所以这条不查内容对不对，只查**有没有把条号打错**：拿真的校验器跑一遍。
+    """
+    from skills.legal.contract_types import 必查表, 通用
+    from skills.legal.verify_laws import classify_law_citations
+    全部 = "\n".join(项 for 表 in 必查表.values() for 项 in 表) + "\n" + "\n".join(通用)
+    出 = classify_law_citations(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                             "..", "data", "laws"), None, 全部)
+    assert 出["疑似编造"] == [], 出["疑似编造"]
+    assert 出["库外"] == [], 出["库外"]
+    assert 出["已校验数"] >= 10, f"清单里几乎没引到条文，这条测试等于没测：{出['已校验数']}"
+
+
+def test_劳动类清单区分了法定必备与建议约定():
+    """普通人拿到"缺了某条"的结论，第一反应是"那我能不签吗" ——
+    法定必备和纯建议约定混在一起，两种缺漏看起来一模一样。"""
+    from skills.legal.contract_types import 必查清单
+    劳 = 必查清单("劳动")
+    assert any("必备条款" in x for x in 劳), 劳
+    assert any("不得约定由劳动者承担违约金" in x for x in 劳), "第25条这条最值钱的没进表"
+    assert all(("必备条款" in x) or ("建议约定" in x) or ("《劳动合同法》" in x) for x in 劳), \
+        [x for x in 劳 if "《" not in x and "建议约定" not in x]
+
+
+# ─────────────── 每条结论要交代依据站在哪儿 ───────────────
+
+def test_每个维度都被要求标注依据():
+    from skills.legal import contract_skills
+    assert "实务判断（法律未强制）" in contract_skills.依据要求, "二选一里那一项没了——模型就只会硬凑法条"
+    for 名, fn in (("风险清单", contract_skills.风险清单), ("失衡条款", contract_skills.失衡条款),
+                 ("歧义表述", contract_skills.歧义表述), ("改法建议", contract_skills.改法建议)):
+        抓 = {}
+
+        def 假(提示词, 判例文字, api_key, 附段落编号=True):
+            抓["p"] = 提示词
+            return "x"
+        原 = contract_skills.问AI
+        contract_skills.问AI = 假
+        try:
+            fn("第一条 内容。", "劳动", "k") if 名 != "改法建议" else fn("第一条 内容。", "劳动", "k", 已有={"风险清单": "y"})
+        finally:
+            contract_skills.问AI = 原
+        assert "依据：" in 抓["p"], f"{名} 没被要求标注依据"
+
+
+def test_系统提示词不再一刀切限300字():
+    """300 字上限压在**共用**的系统提示词里，等于替所有维度决定"能说多细" ——
+    一条风险要写清原文、为什么不利、依据、改成什么，12 条塞不进 300 字。
+    查源码不算测（注释里就写着那个数字），这里查真正发出去的请求体。"""
+    from skills.legal import _base
+    抓 = {}
+
+    class 假响应:
+        def json(self): return {"choices": [{"message": {"content": "ok"}}]}
+
+    def 假post(url, headers=None, json=None, timeout=None):
+        抓["体"] = json
+        return 假响应()
+    原 = _base.requests.post
+    _base.requests.post = 假post
+    try:
+        _base.问AI("任务", "第一条 内容。", "k")
+    finally:
+        _base.requests.post = 原
+    系统 = 抓["体"]["messages"][0]["content"]
+    assert "300字" not in 系统, 系统
+    assert "篇幅按任务里写的来" in 系统, "长度该由每个任务自己说，别再一刀切"
+
+
 # ─────────────── 改法建议：原文那半段可查，拟稿那半段不查 ───────────────
 
 def test_改法建议的原文摘录照常校验():
