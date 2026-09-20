@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>合同风险检查 · 判例助手</title>
+<title>合同风险检查</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -187,6 +187,24 @@
   }
   .rate-btn:hover { border-color: var(--navy); color: var(--navy); }
   .rate-done { font-size: 12px; color: var(--green); }
+
+  /* 改法建议 / 新增条款：这两维给的是**要抄进合同的文字**，
+     平铺成一段 pre-wrap 文本就没法一眼找出"改完长什么样"，也没法整段复制。 */
+  .clause { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+            margin-bottom: 10px; background: var(--surface); }
+  .clause-where { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  .clause-old { font-size: 13px; color: var(--text-dim); margin-bottom: 8px;
+                padding-left: 10px; border-left: 2px solid var(--border); }
+  .clause-label { font-size: 11px; font-weight: 700; color: var(--text-dim);
+                  text-transform: uppercase; letter-spacing: .4px; }
+  .clause-new { background: #f2f7f2; border: 1px solid #cfe3d2; border-radius: 8px;
+                padding: 10px 12px; font-size: 14px; line-height: 1.85; }
+  .clause-reason { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+  .copy-btn { margin-top: 8px; font-size: 12px; padding: 5px 12px;
+              border: 1px solid var(--border); border-radius: 6px;
+              background: var(--surface); color: var(--navy); cursor: pointer; }
+  .copy-btn:hover { border-color: var(--navy); }
+  .copy-btn.done { color: var(--green); border-color: #b8d4c0; }
   .card h3 { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
   /* 正文是给人读的那一层，13px 在手机上偏小；标签/明细这类辅助信息才留在 11-12px */
   .card .content { font-size: 14px; color: var(--text); white-space: pre-wrap; line-height: 1.9; }
@@ -253,6 +271,8 @@
     font-size: 13px; margin-bottom: 14px; font-weight: 500; line-height: 1.7;
   }
   .validation.pass { background: #eef6f0; border: 1px solid #b8d4c0; color: var(--green); }
+  .stat-line { padding: 8px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px;
+               background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); }
   .validation.warn { background: #fdf8ed; border: 1px solid #e8d5a0; color: var(--amber); }
   .validation .warn-item { margin-top: 3px; }
   .validation .warn-item::before { content: "⚠️ "; }
@@ -367,7 +387,7 @@
     <div class="header-logo">⚖️</div>
     <div class="header-text">
       <h1>合同风险检查<span style="font-size:11px;color:var(--amber);font-weight:400;">（测试版）</span></h1>
-      <div class="header-sub">判例助手 · 上传合同，逐条回查原文</div>
+      <div class="header-sub">上传合同，逐条回查原文 · 指出哪条对你不利、改成什么</div>
     </div>
   </div>
   <div class="mode-switch">
@@ -471,7 +491,8 @@
     </div>
 
     <!-- 法条统计 -->
-    <div class="validation pass" id="r-lawstats" style="font-size:13px; color:#8ccb8c;"></div>
+    <!-- 这一行是统计，不是判定 —— 原来套着 .validation.pass，绿底会让人以为"通过了什么" -->
+    <div class="stat-line" id="r-lawstats"></div>
 
     <!-- 验证 -->
     <div class="validation pass" id="validation"></div>
@@ -779,6 +800,84 @@ function 显示错误(msg) {
   刷新剩余次数();
 }
 
+// ---- 改法建议 / 新增条款：把"要抄进合同的文字"从纯文本里拆出来 ----
+// 拆不出来就整段原样显示 —— 这一维的内容比排版重要，
+// 任何一行没按格式写，宁可退回朴素文本，也**不能把它丢掉**。
+const 改法行 = /^\s*(?:[-•●]|\d+[.、])?\s*【(.+?)】\s*[「『](.+?)[」』]\s*(?:改成|改为)\s*[:：]\s*[「『](.+?)[」』]\s*(?:理由\s*[:：]\s*(.*))?\s*$/;
+const 新增对 = /^\s*(?:[-•●]|\d+[.、])?\s*补什么风险\s*[:：]\s*(.+)$/;
+const 新增文 = /^\s*条款文字\s*[:：]\s*[「『]?(.+?)[」』]?\s*$/;
+
+function 拆条目(文字) {
+  const 条目 = [], 其余 = [];
+  let 待配 = null;                                  // 刚读到"补什么风险："，还没等到条款文字
+  const 收其余 = (行) => { if (行.trim()) 其余.push(行); };
+  for (const 行 of String(文字 || '').split('\n')) {
+    const m = 改法行.exec(行);
+    if (m) { 条目.push({型: '改', 位置: m[1], 原文: m[2], 改成: m[3], 理由: m[4] || ''}); continue; }
+    const a = 新增对.exec(行);
+    if (a) { if (待配) 收其余(待配.原行); 待配 = {型: '增', 风险: a[1], 条款: '', 原行: 行}; continue; }
+    const b = 新增文.exec(行);
+    if (b && 待配 && !待配.条款) { 待配.条款 = b[1]; 条目.push(待配); 待配 = null; continue; }
+    收其余(行);
+  }
+  if (待配) 收其余(待配.原行);
+  if (!条目.length) return null;                    // 一条都没认出来 → 整段按原样显示
+  return {条目, 其余};
+}
+
+function 渲染条目(文字) {
+  const 包 = 元素('div', 'clauses');
+  const 拆 = 拆条目(文字);
+  if (!拆) { 包.appendChild(元素('div', 'content', 文字)); return 包; }
+  拆.条目.forEach(x => {
+    const 块 = 元素('div', 'clause');
+    if (x.型 === '改') {
+      块.appendChild(元素('div', 'clause-where', '第' + x.位置.replace(/^第/, '')));
+      块.appendChild(元素('div', 'clause-old', '现在写的是：「' + x.原文 + '」'));
+      块.appendChild(元素('div', 'clause-label', '改成这样'));
+      块.appendChild(元素('div', 'clause-new', x.改成));
+      块.appendChild(复制键(x.改成));
+      if (x.理由) 块.appendChild(元素('div', 'clause-reason', '为什么：' + x.理由));
+    } else {
+      块.appendChild(元素('div', 'clause-where', '补什么风险：' + x.风险));
+      块.appendChild(元素('div', 'clause-label', '建议新增的条款'));
+      块.appendChild(元素('div', 'clause-new', x.条款));
+      块.appendChild(复制键(x.条款));
+    }
+    包.appendChild(块);
+  });
+  // 认不出的行不丢，只是没版式 —— 垫在后面，别让一句说明把要抄的东西挤下去
+  拆.其余.forEach(行 => 包.appendChild(元素('div', 'content', 行)));
+  return 包;
+}
+
+function 复制键(文字) {
+  const 键 = 元素('button', 'copy-btn', '复制这段');
+  键.type = 'button';
+  键.addEventListener('click', async () => {
+    const 成 = await 复制文字(文字);
+    键.textContent = 成 ? '✓ 已复制，可以直接粘过去' : '复制不了，请长按选中上面那段';
+    键.classList.toggle('done', 成);
+  });
+  return 键;
+}
+
+async function 复制文字(文字) {
+  // navigator.clipboard 只在安全上下文里有 —— 局域网用 http:// 打开时它是 undefined，
+  // 而"把改好的条款发给对方"正是普通人最要做的一步，所以必须有退路。
+  try {
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(文字); return true; }
+  } catch (e) { /* 落到下面的退路 */ }
+  try {
+    const 藏 = document.createElement('textarea');
+    藏.value = 文字; 藏.setAttribute('readonly', '');
+    藏.style.position = 'fixed'; 藏.style.opacity = '0';
+    document.body.appendChild(藏); 藏.select();
+    const 成 = document.execCommand('copy');
+    藏.remove(); return 成;
+  } catch (e) { return false; }
+}
+
 // ---- 卡片角上的「有用 / 没看懂」----
 function 逐条评价键(维度) {
   const 脚 = 元素("div", "card-foot");
@@ -899,7 +998,9 @@ function 渲染结果(data) {
     if (当前模式 === 'judgment' && !visibleKeys.includes(key)) continue;
     const card = 元素("div", "card");
     card.appendChild(元素("h3", "", `${图标[key] || "📌"} ${叫法(key)}`));
-    card.appendChild(元素("div", "content", val));
+    // 只有这两维是"要抄走的东西"，其它维度仍是整段文字 —— 给它们都套版式是过度设计
+    card.appendChild(key === '改法建议' || key === '新增条款'
+      ? 渲染条目(val) : 元素("div", "content", val));
     card.appendChild(逐条评价键(key));
     grid.appendChild(card);
   }

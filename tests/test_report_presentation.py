@@ -131,6 +131,20 @@ def test_模型输出不再被拼进可执行的字符串():
     assert 'function 转义' in 页面 and 'function 元素' in 页面, "转义/建节点的工具被删了"
 
 
+def test_改法文字必须能整段复制而且有退路():
+    """这一维的产物是**要粘进合同或发给对方的文字**。普通人不会手动选中一段
+    带书名号的长句子 —— 没有复制键，这一维的价值就只剩"看着爽"。
+    而 navigator.clipboard 只在安全上下文里有：局域网用 http:// 打开时它是 undefined，
+    那正是手机上看这份报告的常见方式，所以退路不是可选项。
+    """
+    assert 'function 复制键' in 页面 and 'function 复制文字' in 页面
+    assert 'navigator.clipboard' in 页面 and 'isSecureContext' in 页面
+    assert "document.execCommand('copy')" in 页面, "没有非安全上下文的退路"
+    assert '长按选中' in 页面, "两条路都失败时得告诉人怎么办，别默默什么都不发生"
+    # 认不出的行不许丢：格式是模型写的，它多写一句说明就该退化成朴素文本而不是少一段内容
+    assert '拆.其余.forEach' in 页面, "结构化渲染把认不出的行丢了"
+
+
 def test_两份叫法表覆盖同一批键():
     """app.py 的 人话标题 负责下载件，index.html 的那份负责屏幕。
 
