@@ -382,7 +382,7 @@
     </div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;" id="formatHint">支持判决书、裁定书、仲裁裁决 · 建议500字以上</div>
     <div class="input-row">
-      <label id="caseNameLabel">判例名称</label>
+      <label id="caseNameLabel">合同名称</label>
       <input type="text" id="caseName" placeholder="可留空，AI自动提取，例：张某诉李某合同纠纷案">
     </div>
     <div class="input-row">
@@ -393,7 +393,7 @@
       填了它才会去查"签这份合同时，报告里引的那几条法律生效了没有"；不填这一维就没核。
     </div>
 
-    <textarea id="caseText" placeholder="粘贴判决书全文，或点击下方上传文件……"></textarea>
+    <textarea id="caseText" placeholder="粘贴合同全文，或点击下方上传文件……"></textarea>
 
     <div class="btn-row">
       <button class="btn btn-primary" onclick="开始分析()">开始分析</button>
@@ -409,7 +409,7 @@
   <!-- 加载中 -->
   <div class="loading" id="loading">
     <div class="spinner"></div>
-    AI正在分析判例……六维并行处理中，约需30-50秒
+    正在逐项分析……
   </div>
 
   <!-- 错误 -->
@@ -733,7 +733,10 @@ async function 开始分析() {
   const text = document.getElementById("caseText").value.trim();
 
   if (!text) {
-    显示错误("请先输入或上传判例文字");
+    // 空输入这句是普通人第一句会撞上的话 —— 说"判例"就把人问住了
+    显示错误(当前模式 === 'contract' ? '先把合同贴进来，或点下面的上传文件。'
+            : (当前模式 === 'case' ? '先描述一下你的纠纷经过，越具体越好。'
+                                  : '请先输入或上传判例文字'));
     return;
   }
 
