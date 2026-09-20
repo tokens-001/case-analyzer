@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>判例助手</title>
+<title>合同风险检查 · 判例助手</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -47,6 +47,9 @@
     font-size: 18px; color: #fff;
   }
   .header-text h1 { font-size: 18px; font-weight: 700; color: #fff; font-family: "Noto Serif SC", "Songti SC", "STSong", serif; }
+  /* 大字说的是现在真正做的事，旧名字退成一行小字 —— 老用户还认得，新用户一眼看懂。
+     副标题带"逐条回查原文"：这是这工具和通用 AI 的差别所在，值得占一个位置。 */
+  .header-sub { font-size: 11px; color: rgba(255,255,255,.6); margin-top: 2px; }
 
   .mode-switch { display: flex; gap: 4px; }
   .mode-btn {
@@ -355,7 +358,8 @@
   <div class="header-brand">
     <div class="header-logo">⚖️</div>
     <div class="header-text">
-      <h1>判例助手<span style="font-size:11px;color:var(--amber);font-weight:400;">（测试版）</span></h1>
+      <h1>合同风险检查<span style="font-size:11px;color:var(--amber);font-weight:400;">（测试版）</span></h1>
+      <div class="header-sub">判例助手 · 上传合同，逐条回查原文</div>
     </div>
   </div>
   <div class="mode-switch">
@@ -390,7 +394,7 @@
       <input type="text" id="caseDate" maxlength="40" placeholder="填合同落款那天，如 2023-04-05；只写 2023 或 2023-04 也行">
     </div>
     <div class="field-hint" id="dateHint">
-      填了它才会去查"签这份合同时，报告里引的那几条法律生效了没有"；不填这一维就没核。
+      填了它才会去查「签这份合同时，报告里引的那几条法律生效了没有」；不填这一维就没核。
     </div>
 
     <textarea id="caseText" placeholder="粘贴合同全文，或点击下方上传文件……"></textarea>
@@ -626,8 +630,8 @@ function 切换模式(mode) {
     ? '填合同落款那天，如 2023-04-05；只写 2023 或 2023-04 也行'
     : '纠纷发生那天，如 2023-04-05；只写 2023 或 2023-04 也行';
   document.getElementById('dateHint').textContent = mode === 'contract'
-    ? '填了它才会去查"签这份合同时，报告里引的那几条法律生效了没有"；不填这一维就没核。'
-    : '填了它才会去查"事发时，报告里引的那几条法律生效了没有"；不填这一维就没核。';
+    ? '填了它才会去查「签这份合同时，报告里引的那几条法律生效了没有」；不填这一维就没核。'
+    : '填了它才会去查「事发时，报告里引的那几条法律生效了没有」；不填这一维就没核。';
   if (mode === 'case') {
     document.getElementById('caseNameLabel').textContent = '纠纷名称';
     document.getElementById('caseName').placeholder = '可留空，系统自动起一个，例：合伙纠纷';
@@ -1009,7 +1013,7 @@ async function 提交反馈() {
         comment: comment
       })
     });
-    // 原来这里无论成败都显示"✅ 收到" —— 而问卷是唯一决定砍哪个模块的输入，
+    // 原来这里无论成败都显示「✅ 收到」 —— 而问卷是唯一决定砍哪个模块的输入，
     // 悄悄丢掉一条比不显示感谢糟得多。
     if (!回.ok) {
       const 错 = await 回.json().catch(() => ({}));
