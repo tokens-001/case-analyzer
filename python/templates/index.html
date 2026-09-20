@@ -347,9 +347,8 @@
     </div>
   </div>
   <div class="mode-switch">
-    <button class="mode-btn active" id="mode-judgment" onclick="切换模式('judgment')">判决书分析</button>
+    <button class="mode-btn active" id="mode-contract" onclick="切换模式('contract')">合同审查</button>
     <button class="mode-btn" id="mode-case" onclick="切换模式('case')">案情分析</button>
-    <button class="mode-btn" id="mode-contract" onclick="切换模式('contract')">合同审查</button>
   </div>
 </div>
 
@@ -575,7 +574,7 @@
 // ============================================================
 
 // ---- 模式切换 ----
-var 当前模式 = 'judgment';
+var 当前模式 = 'contract';
 var 子模式 = 'read';
 
 function 切换模式(mode) {
@@ -586,7 +585,6 @@ function 切换模式(mode) {
     document.getElementById("results").classList.remove("active");
   }
   当前模式 = mode;
-  document.getElementById('mode-judgment').classList.toggle('active', mode === 'judgment');
   document.getElementById('mode-case').classList.toggle('active', mode === 'case');
   document.getElementById('mode-contract').classList.toggle('active', mode === 'contract');
   document.getElementById('features-judgment').style.display = mode === 'judgment' ? '' : 'none';
@@ -641,6 +639,9 @@ async function 刷新剩余次数() {
   }
 }
 刷新剩余次数();
+// 初始界面交给 切换模式() 走一次，不靠 HTML 里那堆 style="display:..." 的默认值 ——
+// 否则"哪个模式是默认"就有两个真相来源：改了 var 忘了改标记，进页面就是错的。
+切换模式(当前模式);
 
 // ---- 文件读取 ----
 async function 读文件(input) {
