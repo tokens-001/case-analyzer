@@ -99,6 +99,46 @@ def test_只配了anthropic的token时不再往下走():
             os.environ["DEEPSEEK_API_KEY"] = 原深
 
 
+def test_被拒绝的请求不许扣配额():
+    """扣次数是有副作用的一步。原来"正文太短/不像判决书/请求体不是 JSON"这些
+    一句就能改对的失败，都排在 消耗次数 之后 —— 试错的成本被算成用户的一天一次。
+
+    ⚠️ 这条用例故意把 每日上限 设成 0 当探针：如果顺序又被人换回去，
+    坏请求会先撞上 429 而不是 400 —— 那样这条测试就只是在测"返回了个错"，
+    换不回来看不出区别。现在两种失败码是分开的，顺序一错就红。
+    """
+    目录 = tempfile.mkdtemp(prefix="判例助手-配额-")
+    原目录, 原上限 = app_mod.数据根目录, app_mod.每日上限
+    原key = os.environ.get("DEEPSEEK_API_KEY")
+    os.environ["DEEPSEEK_API_KEY"] = "sk-测试用不联网"
+    app_mod.数据根目录 = 目录
+    app_mod.每日上限 = 0                    # 一被调用就必然不够 → 用状态码区分"有没有走到这一步"
+    app_mod.app.config["TESTING"] = True
+    客 = app_mod.app.test_client()
+    try:
+        坏请求 = [
+            {"json": {"text": "太短了", "mode": "judgment"}},                       # 正文不足 50 字
+            {"json": {"text": "双方经友好协商达成如下合作意向。" * 12, "mode": "judgment"}},  # 不像判决书
+            {"data": "这根本不是一份 JSON", "content_type": "text/plain"},            # 请求体形状错
+        ]
+        for 参 in 坏请求:
+            回 = 客.post("/analyze", **参)
+            assert 回.status_code == 400, (参, 回.status_code, 回.get_json())
+        assert not os.listdir(目录), f"被拒绝的请求留下了计数痕迹：{os.listdir(目录)}"
+
+        好 = 客.post("/analyze", json={"text": "原告诉被告借款合同纠纷一案，法院审理认为。" * 10,
+                                       "mode": "judgment"})
+        assert 好.status_code == 429, 好.get_json()      # 走到限流了 —— 上面三条根本没走到
+    finally:
+        app_mod.数据根目录 = 原目录
+        app_mod.每日上限 = 原上限
+        if 原key is None:
+            os.environ.pop("DEEPSEEK_API_KEY", None)
+        else:
+            os.environ["DEEPSEEK_API_KEY"] = 原key
+        shutil.rmtree(目录, ignore_errors=True)
+
+
 if __name__ == "__main__":
     测试们 = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for 名, t in 测试们:

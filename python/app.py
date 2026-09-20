@@ -280,13 +280,17 @@ def 分析路由():
     if not api_key:
         return jsonify({"error": "服务端未设置 DEEPSEEK_API_KEY 环境变量"
                                  "（本机可放 python/.env，部署方在进程环境里给）"}), 500
-    if not 消耗次数(uid, ip):
-        剩余 = 剩余次数查询(uid, ip)
-        return jsonify({"error": f"今日分析次数已用完（每人{每日上限}次），请明天再来。", "剩余": 0, "上限": 每日上限}), 429
 
-    data = request.json
-    判例名 = data.get("name", "").strip()
-    判例 = data.get("text", "").strip()
+    # ── 先把请求本身验完，再扣次数 ──
+    # 顺序很要紧：扣次数是**有副作用**的一步，而"名称过长/正文太短/不像判决书"
+    # 都是客户端一句就能改对的事。原来这些校验排在 消耗次数 之后，
+    # 于是一次打错字的请求、一个非 JSON 的请求体，都白烧用户一天一次的配额
+    # （实测：探测用的短文本被 400 挡下，次数照样少了一次）。
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "请求体不是一份 JSON 对象"}), 400
+    判例名 = (data.get("name") or "").strip()
+    判例 = (data.get("text") or "").strip()
     分析模式 = data.get("mode", "judgment")  # judgment=判决书 case=案情分析 contract=合同审查
     子模式 = data.get("submode", "read")
     # 案发时间：可选。不填只是"时效这一维没校验"（校验层会把它算进未校验，等级封顶在 中），
@@ -308,6 +312,11 @@ def 分析路由():
         judgment_keywords = ["法院", "判决", "原告", "被告", "裁定", "本院", "审理", "诉称", "辩称"]
         if not any(kw in 判例 for kw in judgment_keywords[:4]):
             return jsonify({"error": "输入文本不像判决书。判决书通常包含'原告''被告''法院'等主体信息。如确为判决书请继续；如为案情咨询请切换至'案情分析'模式。"}), 400
+
+    if not 消耗次数(uid, ip):
+        剩余 = 剩余次数查询(uid, ip)
+        return jsonify({"error": f"今日分析次数已用完（每人{每日上限}次），请明天再来。", "剩余": 0, "上限": 每日上限}), 429
+
 
     # 合同模式才有的变量，先给默认值 —— 下面那段校验就不用到处判模式
     条款表, 无条号警告, 合同类型 = {}, [], ""
