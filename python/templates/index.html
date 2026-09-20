@@ -256,6 +256,14 @@
   /* note = 工具的覆盖边界，不是这条分析的错误。别用红色/琥珀色抢注意力。 */
   .risk-item.note { background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); font-weight: 400; }
 
+  /* ---- 免责（结果区顶部） ---- */
+  .disclaimer {
+    background: #fff8e8; border: 1px solid #f0d9a8; border-left: 4px solid #d99a1c;
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
+    font-size: 13px; line-height: 1.8; color: #6b4e12;
+  }
+  .disclaimer b { color: #8a5a06; }
+
   /* ---- 可信度 ---- */
   .trust-dashboard {
     background: var(--surface);
@@ -350,16 +358,16 @@
   <!-- 输入区 -->
   <div class="input-section">
     <div class="features" id="features-judgment">
-      <span class="features-title">法院推理拆解</span>
-      <span class="features-desc">还原裁判逻辑</span>
+      <span class="features-title">读懂一份判决书</span>
+      <span class="features-desc">法院怎么认定的、为什么这么判</span>
     </div>
     <div class="submode-switch" id="submode-switch">
-      <button class="submode-btn active" id="submode-read" onclick="切换子模式('read')">📖 判例解读</button>
-      <button class="submode-btn" id="submode-audit" onclick="切换子模式('audit')">⚔️ 裁判审计</button>
+      <button class="submode-btn active" id="submode-read" onclick="切换子模式('read')">📖 读懂它</button>
+      <button class="submode-btn" id="submode-audit" onclick="切换子模式('audit')">🔎 挑它的问题</button>
     </div>
     <div class="features" id="features-case" style="display:none">
-      <span class="features-title">律师对抗分析</span>
-      <span class="features-desc">评估风险与诉讼路径</span>
+      <span class="features-title">遇到纠纷了</span>
+      <span class="features-desc">双方会怎么争、风险在哪、下一步做什么</span>
     </div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;" id="formatHint">支持判决书、裁定书、仲裁裁决 · 建议500字以上</div>
     <div class="input-row">
@@ -395,6 +403,15 @@
 
   <!-- 结果区 -->
   <div class="results" id="results">
+
+    <!-- 免责放在结果**最上面**，不是页脚小字：面向非专业人士时，他们会把
+         「接下来可以做什么」直接当成结论用。这一层必须说清工具做了什么、没做什么。 -->
+    <div class="disclaimer">
+      <b>这不是法律意见。</b>它只做了一件能确定的事：把报告里引用的每一条法律、每一段合同原文
+      <b>拿回去逐字核对</b> —— 对不上的标红，没法核对的写清楚。
+      它<b>没有判断法律结论对不对</b>，也看不到你手上的完整材料。
+      真要签字或真要打官司之前，请带原件找执业律师核实。
+    </div>
 
     <div class="risk-section" id="risk-section" style="display:none;"><div id="risk-items"></div></div>
 
@@ -788,6 +805,18 @@ function 渲染结果(data) {
     "风险清单": "🚨", "缺失条款": "🕳️", "失衡条款": "⚖️",
     "歧义表述": "❔", "谈判顺序": "🤝",
   };
+  // 卡片标题给人看的是人话，但**内部键名一个字不改** —— 后端契约、存储的 JSON、
+  // 测试全押在键名上（`分析模式`、`段落名` 都按这些键取值）。改显示层就够了，
+  // 把键名一起改掉，等于把一次文案调整扩散成一次接口变更。
+  const 人话标题 = {
+    "结构化摘要": "这份文件在说什么", "核心争议": "双方在争什么", "推理链路": "法院是怎么推的",
+    "法条适用精析": "依据的是哪几条法律", "程序问题识别": "程序上有没有问题",
+    "未回答问题": "这份判决没说清的", "对立解释路径": "对方还能怎么解释", "论证完整性检查": "说理有没有说圆",
+    "法律关系": "你们之间是什么关系", "事实与证据": "手上有什么证据", "对抗路径": "双方会怎么争",
+    "风险推演": "可能发生什么坏事", "行动建议": "接下来可以做什么",
+    "风险清单": "哪些条款对你不利", "缺失条款": "合同里没写的", "失衡条款": "权利义务不对等的",
+    "歧义表述": "写得含糊、日后会吵的", "谈判顺序": "先争哪条、后让哪条",
+  };
   const grid = document.getElementById("cardGrid");
   grid.innerHTML = "";
   const readKeys = ["结构化摘要", "核心争议", "推理链路", "法条适用精析", "程序问题识别"];
@@ -800,7 +829,7 @@ function 渲染结果(data) {
     const card = document.createElement("div");
     card.className = "card";
     const h3 = document.createElement("h3");
-    h3.textContent = emoji + " " + key;
+    h3.textContent = emoji + " " + (人话标题[key] || key);
     const content = document.createElement("div");
     content.className = "content";
     content.textContent = val;
