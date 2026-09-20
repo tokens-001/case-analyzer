@@ -278,6 +278,10 @@
   .trust-breakdown .tbitem { display: flex; align-items: center; gap: 3px; }
   .trust-breakdown .tbitem.up { color: var(--green); }
   .trust-breakdown .tbitem.down { color: var(--red); }
+  /* 两格读数：核到了多少 / 有多少压根没法核。等级只是一个词，撑不住"这份报告凭什么可信" */
+  .trust-coverage { font-size: 12px; color: var(--text); margin-top: 6px; line-height: 1.7; }
+  .trust-coverage b { font-weight: 700; }
+  .trust-coverage .uncore { color: var(--amber, #b7791f); }
 
   /* ---- 历史 ---- */
   .history-section {
@@ -399,6 +403,7 @@
         <div class="trust-score-ring" id="trust-ring">--</div>
           <div class="trust-detail">
           <div class="trust-label">分析可信度</div>
+          <div class="trust-coverage" id="trust-coverage"></div>
           <div class="trust-breakdown" id="trust-breakdown"></div>
         </div>
       </div>
@@ -752,6 +757,22 @@ function 渲染结果(data) {
     document.getElementById("trust-breakdown").innerHTML = breakdownItems
       ? `<span style="font-size:11px;color:var(--text-dim);margin-right:6px;">评分明细：</span>${breakdownItems}`
       : "";
+
+    // 两格读数：等级只是一个词，读者真正要知道的是"核了多少"和"有多少压根没法核"。
+    // 一份核到 15 条的报告和一份只核到 1 条的报告，等级可以完全一样 —— 差别必须看得见。
+    const 核 = t.核验;
+    const 覆盖 = document.getElementById("trust-coverage");
+    if (核 && 核.引用总数) {
+      const 没法核说明 = 核.库外 ? `（其中 ${核.库外} 处是本工具没收录的法律）` : "";
+      覆盖.innerHTML =
+        `这份报告的依据共 <b>${核.引用总数}</b> 处：` +
+        `逐条核到原文 <b>${核.核到}</b> 处` +
+        (核.对不上 ? `，<b style="color:var(--red)">对不上 ${核.对不上}</b> 处` : "，对不上 0 处") +
+        `，<span class="uncore">没法核 ${核.没法核} 处</span>${没法核说明}` +
+        (t.覆盖度 !== null && t.覆盖度 !== undefined ? ` —— <b>核对覆盖 ${Math.round(t.覆盖度 * 100)}%</b>` : "");
+    } else {
+      覆盖.innerHTML = '<span class="uncore">这份报告没有给出可逐条核对的依据（没引法条条号、也没挂合同条款）—— 一次校验都没发生。</span>';
+    }
   } else {
     document.getElementById("trust-dashboard").style.display = "none";
   }
