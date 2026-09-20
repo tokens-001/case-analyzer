@@ -3,8 +3,9 @@
 
 import os
 import json
+import re
 import uuid
-from datetime import date
+from datetime import date, datetime
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, session
@@ -48,16 +49,40 @@ from skills.legal.score_analysis import (
     validate_analysis_quality,
     generate_risk_list,
     compute_trust_score,
+    是失败产物,
 )
 
 app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
+# 不设这个，上传口子的 `档.read()` 会把对方发过来的整个请求体读进内存 ——
+# 20MB 那道检查读的是已经读完的字节，晚了。给到 25MB：合同上传限 20MB，留点余量。
+app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
+
+# 管理面口令：没设这个环境变量时，/dashboard 与 /feedback-data 对**任何人**都不开
+# （只对自己这台机器开）。这两个口子会跨用户汇总数据，早先是无条件公开的。
+管理口令 = os.environ.get("ADMIN_TOKEN", "")
+
+
+def _是能管后台():
+    """本机直接放行；远程必须带对口令。口令用常量时间比较，不拿 == 比。"""
+    if request.remote_addr in ("127.0.0.1", "::1"):
+        return True
+    import hmac
+    给 = request.args.get("token") or request.headers.get("X-Admin-Token", "")
+    # compare_digest 拒绝拿**非 ASCII 的 str** 比较（访客传 `?token=错` 就是 TypeError → 500）。
+    # 编成 bytes 再比：不相等就是不相等，返回 403，而不是把异常抛到公网上。
+    return (bool(管理口令) and isinstance(给, str)
+            and hmac.compare_digest(给.encode("utf-8"), 管理口令.encode("utf-8")))
+
 
 @app.after_request
 def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    """原来这里无条件发 `Access-Control-Allow-Origin: *` —— 删掉，不发。
+
+    同源部署（页面就是这个 app 渲染的）不需要任何 CORS 头。留着它唯一的用处是：
+    挂到公网之后，任何别的网页都能拿着用户的 cookie 来读他的历史、替他提交反馈。
+    """
+    response.headers.pop("Access-Control-Allow-Origin", None)
     return response
 
 # 项目根目录：app.py 在 python/ 里，往上一级就是项目根
@@ -129,31 +154,73 @@ def 用户数据目录():
 # 验证分析结果 → 已迁移到 skills/legal/score_analysis.py
 
 # ---- 8. 存储 ----
-def _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路径, 论证检查, 程序问题, 未答):
+# 这些键不属于"分析维度"，不能进卡片列表：前端把 分析 里的每个键都当一张卡渲染，
+# 存进去就等于在报告页凭空多出一张「核验」卡。
+元数据键 = ("判例名", "日期", "模式", "字数", "合同类型", "时间基准", "核验")
+
+
+def _核验快照(可信度, 验证, 风险列表, 法条对照, 条款校验):
+    """把此刻的核验读数压成一份可复盘的快照，跟着报告一起落盘。
+
+    为什么必须存：原来只存分析文字，于是从历史打开一份旧报告时，页面上没有任何
+    东西能说明"当时核到了多少、有几条对不上" —— 要么显示不出来，要么得现编一个
+    "✅ 验证通过"（原来就是后者，见 详情路由）。存下来之后，历史页报的数就是
+    当初那个数，而且这份报告第一次变得可以复盘（误指控率需要这个）。
+    """
+    return {
+        "等级": 可信度.get("等级"),
+        "覆盖度": 可信度.get("覆盖度"),
+        "核验": 可信度.get("核验"),
+        "格式检查": {"通过": 验证.get("通过"), "问题": 验证.get("问题", []),
+                     "法条统计": 验证.get("法条统计", "")},
+        "要核实": [p["内容"] for p in 风险列表 if p.get("等级") == "danger"],
+        "边界说明": [p["内容"] for p in 风险列表 if p.get("等级") == "note"],
+        "法条对照": 法条对照 or [],
+        "条款校验": ({k: v for k, v in 条款校验.items() if not isinstance(v, list)}
+                    if 条款校验 else None),
+    }
+
+
+def _写判决JSON(判例名, 数据):
+    """三种模式共用的落盘：文件名一律过 安全名，不给 "/" 和 ".." 留通路。"""
     文件夹 = 用户数据目录()
     今天 = str(date.today())
-    safe_name = 判例名.replace("/", "_").replace("..", "_") or "未命名"
-    文件名 = f"{文件夹}/{今天}_{safe_name}.json"
-    数据 = {
-        "判例名": 判例名, "日期": 今天, "模式": "判决书分析",
+    文件名 = os.path.join(文件夹, f"{今天}_{_安全名(判例名)}.json")
+    os.makedirs(文件夹, exist_ok=True)
+    with open(文件名, "w", encoding="utf-8") as f:
+        json.dump(数据, f, ensure_ascii=False)
+    return 文件名
+
+
+def _安全名(判例名):
+    return 判例名.replace("/", "_").replace("..", "_").replace("\x00", "_") or "未命名"
+
+
+def _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路径, 论证检查, 程序问题, 未答, 核验=None):
+    return _写判决JSON(判例名, {
+        "判例名": 判例名, "日期": str(date.today()), "模式": "判决书分析",
         "结构化摘要": 结构, "核心争议": 争议,
         "推理链路": 推理, "法条适用精析": 法条精析,
         "对立解释路径": 对立路径, "论证完整性检查": 论证检查,
         "程序问题识别": 程序问题, "未回答问题": 未答,
-    }
-    os.makedirs(文件夹, exist_ok=True)
-    with open(文件名, "w") as f:
-        json.dump(数据, f)
-    return 文件名
+        "核验": 核验,
+    })
 
-def _存储合同JSON(判例名, 合同类型, 分析结果):
-    文件夹 = 用户数据目录()
-    今天 = str(date.today())
-    安全名 = 判例名.replace("/", "_").replace("..", "_") or "未命名"
-    数据 = {"判例名": 判例名, "日期": 今天, "模式": "合同审查", "合同类型": 合同类型, **分析结果}
-    os.makedirs(文件夹, exist_ok=True)
-    with open(f"{文件夹}/{今天}_{安全名}.json", "w") as f:
-        json.dump(数据, f)
+def _存储合同JSON(判例名, 合同类型, 分析结果, 核验=None, 时间基准=None, 字数=0):
+    return _写判决JSON(判例名, {
+        "判例名": 判例名, "日期": str(date.today()), "模式": "合同审查",
+        "合同类型": 合同类型, "时间基准": 时间基准, "字数": 字数,
+        **分析结果, "核验": 核验,
+    })
+
+def _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, 总结, 核验=None):
+    return _写判决JSON(判例名, {
+        "判例名": 判例名, "日期": str(date.today()), "模式": "案情分析",
+        "法律关系": 法律关系, "事实与证据": 事实证据,
+        "对抗路径": 对抗路径, "风险推演": 风险推演,
+        "行动建议": 行动建议, "总结": 总结,
+        "核验": 核验,
+    })
 
 
 @app.route("/parse-doc", methods=["POST"])
@@ -175,21 +242,6 @@ def 解析文档路由():
         return jsonify({"error": 出['错误']}), 400
     return jsonify({"文本": 出['文本'], "条数": 出['条数'], "警告": 出['警告']})
 
-def _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, 总结):
-    文件夹 = 用户数据目录()
-    今天 = str(date.today())
-    safe_name = 判例名.replace("/", "_").replace("..", "_") or "未命名"
-    文件名 = f"{文件夹}/{今天}_{safe_name}.json"
-    数据 = {
-        "判例名": 判例名, "日期": 今天, "模式": "案情分析",
-        "法律关系": 法律关系, "事实与证据": 事实证据,
-        "对抗路径": 对抗路径, "风险推演": 风险推演,
-        "行动建议": 行动建议, "总结": 总结,
-    }
-    os.makedirs(文件夹, exist_ok=True)
-    with open(文件名, "w") as f:
-        json.dump(数据, f)
-    return 文件名
 
 # ---- 9. 每日次数限制 ----
 # 0 = 不限。这个上限是给**陌生访客**准备的：线上部署时防止别人拿你的 key 刷钱。
@@ -353,7 +405,8 @@ def 分析路由():
 
 
     # 合同模式才有的变量，先给默认值 —— 下面那段校验就不用到处判模式
-    条款表, 无条号警告, 合同类型 = {}, [], ""
+    条款表, 无条号警告, 合同类型, 类型得分 = {}, [], "", {}
+    各维输出 = {}
 
     try:
         if 分析模式 == "case":
@@ -377,31 +430,42 @@ def 分析路由():
             try: 总结 = summarize_case.执行(判例, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, api_key)
             except Exception as e: 总结 = f"【总结失败】{str(e)[:200]}"
             全部分析 = [法律关系, 事实证据, 对抗路径, 风险推演, 行动建议]
+            各维输出 = {"法律关系": 法律关系, "事实与证据": 事实证据, "对抗路径": 对抗路径,
+                        "风险推演": 风险推演, "行动建议": 行动建议, "总结": 总结}
         elif 分析模式 == "contract":
             # 锚点表**服务端现算**：只从即将喂给模型的这份文本里派生。
             # 收客户端传来的条款表，等于让它自己声明「我每条都对得上」。
             带锚点文本, 条款表, 条数, 无条号警告 = parse_doc.规范化(判例)
-            合同类型, _ = 判定类型(带锚点文本)
+            合同类型, 类型得分 = 判定类型(带锚点文本)
             判例 = 带锚点文本
+            # 前 4 维并行，谈判顺序在它们之后（见下方注释）；这里只列并行的那 4 个
             维度 = {
                 "风险清单": contract_skills.风险清单,
                 "缺失条款": contract_skills.缺失条款,
                 "失衡条款": contract_skills.失衡条款,
                 "歧义表述": contract_skills.歧义表述,
-                "谈判顺序": contract_skills.谈判顺序,
             }
-            with ThreadPoolExecutor(max_workers=5) as executor:
+            with ThreadPoolExecutor(max_workers=4) as executor:
                 futures = {名: executor.submit(fn, 判例, 合同类型, api_key)
                            for 名, fn in 维度.items()}
                 结果 = {}
                 for 名, f in futures.items():
                     try: 结果[名] = f.result()
                     except Exception as e: 结果[名] = f"【{名}失败】{str(e)[:200]}"
-            全部分析 = [结果[k] for k in 维度]
+            # 谈判顺序**必须排在其它四维之后**：它的提示词写的是"把上面几类问题收成
+            # 一份谈判清单"，而原来它和前四维一起并行 —— 拿不到任何一份结论，
+            # 只能对着合同原文自己另拟一份清单。产品里对普通人最有用的一张卡
+            # （先争哪条、后让哪条）因此和上面的风险清单各说各话。
+            try:
+                结果["谈判顺序"] = contract_skills.谈判顺序(判例, 合同类型, api_key, 已有=dict(结果))
+            except Exception as e:
+                结果["谈判顺序"] = f"【谈判顺序失败】{str(e)[:200]}"
+            全部分析 = [结果[k] for k in list(维度) + ["谈判顺序"]]
             try:
                 总结 = contract_skills.总结(判例, 合同类型, 结果, api_key)
             except Exception as e:
                 总结 = f"【总结失败】{str(e)[:200]}"
+            各维输出 = dict(结果, 总结=总结)
         else:
             tasks = {"结构化摘要": structure_summary, "程序问题识别": identify_procedural_issues}
             if 子模式 == "audit":
@@ -424,19 +488,19 @@ def 分析路由():
             程序问题 = 结果.get("程序问题识别", "")
             总结 = 结构
             全部分析 = [争议, 推理, 未答, 法条精析, 对立路径, 论证检查, 程序问题]
+            各维输出 = dict(结果, 总结=总结)
     except Exception as e:
         return jsonify({"error": f"分析过程异常: {str(e)[:300]}"}), 500
 
     if not 判例名:
         # 从案情原文提取关键词作名称
-        import re as _re
         patterns = [
             r'(?:原被告|双方|当事人)?[因涉].{2,12}(?:纠纷|争议|合同|案件)',
             r'(?:原告|申请人).{2,6}(?:诉|申请).{2,6}(?:纠纷|案)',
             r'.{2,8}(?:合同|借贷|买卖|租赁|合伙|侵权|劳动|婚姻|继承|房产)纠纷',
         ]
         for p in patterns:
-            m = _re.search(p, 判例)
+            m = re.search(p, 判例)
             if m:
                 判例名 = m.group()[:30].replace(" ", "")
                 break
@@ -453,33 +517,59 @@ def 分析路由():
     if 分析模式 == "contract" and 被截断:
         审查警告.append(f"合同超出 {15000} 字的部分未参与本次审查 —— "
                         f"『没找到某条款』在截断范围内不成立")
+    # "通用" 是一张兜底表，不是判出来的类型。它决定"缺失条款"这一维照着哪张清单查，
+    # 判成通用却不说，等于用一张放之四海皆准的表报"你合同里缺这缺那"。
+    if 分析模式 == "contract" and 合同类型 == "通用":
+        命中 = {类: 分 for 类, 分 in 类型得分.items() if 分}
+        审查警告.append("没能确定合同类型（" +
+                        (f"特征词命中：{'、'.join(f'{类}{分}词' for 类, 分 in 命中.items())}"
+                         if 命中 else "一类特征词都没命中") +
+                        "），改按通用清单查『缺了哪一条』—— 这类结论的针对性比专用清单低")
     # 前 4 位对应 全部分析[:4]，第 5 位对应被单独检查的 总结（判决书模式下它是"结构化摘要"）
     段落名 = {"case": ["法律关系", "事实与证据", "对抗路径", "风险推演", "总结"],
               "contract": ["风险清单", "缺失条款", "失衡条款", "歧义表述", "总结"],
               }.get(分析模式, ["核心争议", "推理链路", "未回答问题", "法条适用精析", "总结（结构化摘要）"])
     验证 = validate_analysis_quality(*全部分析[:4], 总结, count_law_citations, 段落名=段落名)
-    溯源 = ({"warning": "案情模式不适用段号溯源；合同模式按条号锚点校验"}
-            if 分析模式 in ("case", "contract")
+    # ⚠️ 上面那只检查只看 5 个槽位，而一次分析最多有 6 路输出（合同的谈判顺序是第 6 路、
+    # 案情的"行动建议"、判决的"程序问题识别"都不在槽位里）。哪一路返回的是 API 失败
+    # 产物，就得在哪一路出声 —— 否则一段 `{"error": true…}` 会原样躺在报告里当内容。
+    失败维 = [名 for 名, 文 in 各维输出.items() if 是失败产物(文)]
+    if 失败维:
+        验证["通过"] = False
+        验证["问题"].append("这些维度返回的是 API 失败产物、不是分析内容："
+                            + "、".join(f"『{名}』" for 名 in 失败维))
+    # 段号溯源只有判决书模式做得到（合同按条号锚点核，案情压根没有原文段号可引）。
+    # 原来合同模式也回一句"案情模式不适用段号溯源；合同模式按条号锚点校验" ——
+    # 于是审合同的人点开那一栏，看到的是一句在跟他解释**另一个模式**的话。
+    # 没有内容就回 null，前端那一栏直接不出现；案情留一句，是因为它确实少了一维。
+    溯源 = (None if 分析模式 == "contract"
+            else {"warning": "案情分析没有判决书原文可回查，这一维不适用；"
+                             "能核的是法条那一部分（见下方法条库对照）"}
+            if 分析模式 == "case"
             else trace_citations(判例, *全部分析))
 
     # ── 组装返回 ──
     剩余 = 剩余次数查询(uid, ip)
-    可信度 = compute_trust_score(验证, 法条校验, 溯源, 条款校验=条款校验)
-    风险列表 = generate_risk_list(验证, 法条校验, 溯源, 条款校验=条款校验)
+    # 合同读者看到"案发"两个字会以为自己在被打官司 —— 同一个基准日在这条链路上叫签署日
+    时间词 = "签署" if 分析模式 == "contract" else "案发"
+    可信度 = compute_trust_score(验证, 法条校验, 溯源, 条款校验=条款校验, 时间词=时间词)
+    风险列表 = generate_risk_list(验证, 法条校验, 溯源, 条款校验=条款校验, 时间词=时间词)
     for 警 in 审查警告:
         风险列表.append({"等级": "note", "内容": 警})
+    核验 = _核验快照(可信度, 验证, 风险列表, 法条对照, 条款校验)
 
     if 分析模式 == "contract":
         分析结果 = {名: 结果[名] for 名 in ("风险清单", "缺失条款", "失衡条款", "歧义表述", "谈判顺序")}
         分析结果["总结"] = 总结
-        _存储合同JSON(判例名, 合同类型, 分析结果)
+        _存储合同JSON(判例名, 合同类型, 分析结果, 核验=核验,
+                     时间基准=法条校验.get("案发日期") or 案发时间, 字数=len(判例))
     elif 分析模式 == "case":
         分析结果 = {
             "法律关系": 法律关系, "事实与证据": 事实证据,
             "对抗路径": 对抗路径, "风险推演": 风险推演,
             "行动建议": 行动建议, "总结": 总结,
         }
-        _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, 总结)
+        _存储案情JSON(判例名, 法律关系, 事实证据, 对抗路径, 风险推演, 行动建议, 总结, 核验=核验)
     else:
         分析结果 = {
             "结构化摘要": 结构, "核心争议": 争议,
@@ -487,7 +577,8 @@ def 分析路由():
             "对立解释路径": 对立路径, "论证完整性检查": 论证检查,
             "程序问题识别": 程序问题, "未回答问题": 未答,
         }
-        _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路径, 论证检查, 程序问题, 未答)
+        _存储判决JSON(判例名, 结构, 争议, 推理, 法条精析, 对立路径, 论证检查, 程序问题, 未答,
+                     核验=核验)
 
     return jsonify({
         "判例名": 判例名,
@@ -505,6 +596,10 @@ def 分析路由():
         # 合同模式专有：条款锚点三态 + 类型 + 条数（类型判不准时是"通用"，照实说）
         "条款校验": ({k: v for k, v in 条款校验.items()} if 条款校验 else None),
         "合同类型": 合同类型, "条数": len([k for k in 条款表 if k != '前言']),
+        # 键名 → 人话：下载件在这里翻译，前端用它自己的那份表（测试核对两边覆盖一致）。
+        # 为什么后端也要带一份：`/download` 收到的就是 分析 那个 dict，翻译不在这里做
+        # 就得在客户端做，而客户端翻译过的东西存进盘里还是行话。
+        "分析人话": {k: 叫法(k) for k in 分析结果},
     })
 
 @app.route("/remaining")
@@ -523,93 +618,171 @@ def 历史路由():
 
     files = sorted(os.listdir(文件夹), reverse=True)
     结果 = []
-    for fname in files[:20]:
-        if not fname.endswith(".json"):
+    for fname in files:
+        # 同一个目录里还住着别的 json：`limit_日期.json` 是当天的次数表。
+        # 不排掉的话它会被当成一份"判例"列出来（按倒序它甚至排在最前），
+        # 点开就是一张内容为空的假报告。
+        if not fname.endswith(".json") or fname.startswith(("limit_", "session_secret")):
             continue
+        if len(结果) >= 20:
+            break
         try:
-            with open(os.path.join(文件夹, fname), "r") as f:
+            with open(os.path.join(文件夹, fname), encoding="utf-8") as f:
                 d = json.load(f)
             结果.append({
                 "文件名": fname,
                 "判例名": d.get("判例名", ""),
                 "日期": d.get("日期", ""),
+                "模式": d.get("模式", ""),
                 "总结": d.get("总结", "")[:120]
             })
         except Exception:
             pass
     return jsonify(结果)
 
+
 @app.route("/case/<fname>")
 def 详情路由(fname):
-    """返回单条判例的完整分析数据，格式与/analyze返回一致"""
+    """打开一份存下来的报告。
+
+    ⚠️ 这里原来在数据缺失时**现编一个"验证通过"**：
+        `"验证": {"通过": True, "问题": [], "法条统计": "历史存档数据"}, "可信度": None`
+    于是从历史打开任何一份旧报告，页面都亮一条绿勾，而这次打开一次校验都没做 ——
+    一份当时"0 条对不上"的报告和一份当时"7 条对不上"的报告看起来一模一样。
+    现在只有当时存下了核验快照才报数；没存下就明说没数（`验证: None` →
+    前端渲染成"这次打开没有重跑校验"）。
+    """
     文件夹 = 用户数据目录()
-    路径 = os.path.join(文件夹, fname)
-    if ".." in fname or not os.path.exists(路径):
+    路径 = os.path.realpath(os.path.join(文件夹, fname))
+    if ".." in fname or not 路径.startswith(os.path.realpath(文件夹) + os.sep):
+        return jsonify({"error": "文件不存在"}), 404
+    if not os.path.exists(路径):
         return jsonify({"error": "文件不存在"}), 404
     try:
-        with open(路径, "r") as f:
+        with open(路径, encoding="utf-8") as f:
             d = json.load(f)
-        # 通用格式：从存储数据提取所有分析字段
-        分析字段 = {}
-        for k, v in d.items():
-            if k not in ("判例名", "日期", "字数", "模式"):
-                分析字段[k] = v
+        核验 = d.get("核验")
+        # 通用格式：从存储数据提取所有分析字段（元数据键不算分析维度，别渲染成卡片）
+        分析字段 = {k: v for k, v in d.items() if k not in 元数据键}
         return jsonify({
             "判例名": d.get("判例名", ""),
             "字数": d.get("字数", 0),
+            "模式": d.get("模式", ""),
+            "合同类型": d.get("合同类型", ""),
             "分析": 分析字段,
             "溯源": None,
-            "法条对照": None,
-            "验证": {"通过": True, "问题": [], "法条统计": "历史存档数据"},
-            "可信度": None,
-            "风险列表": [],
+            "法条对照": (核验 or {}).get("法条对照") or None,
+            "验证": (核验 or {}).get("格式检查"),
+            "可信度": ({"等级": 核验["等级"], "覆盖度": 核验["覆盖度"], "核验": 核验["核验"],
+                        "明细": [], "已校验数": 0, "未校验数": 0}
+                       if 核验 and 核验.get("核验") else None),
+            "风险列表": ([{"等级": "danger", "内容": x} for x in (核验 or {}).get("要核实", [])]
+                        + [{"等级": "warning", "内容": x}
+                           for x in ((核验 or {}).get("格式检查") or {}).get("问题", [])]
+                        + [{"等级": "note", "内容": x} for x in (核验 or {}).get("边界说明", [])])
+                           if 核验 else [],
         })
     except Exception:
         return jsonify({"error": "读取失败"}), 500
 
+# 内部键名 → 给人看的叫法。前端有一份同名的表（index.html 的 人话标题），
+# 两份都要对得上，测试 tests/test_report_presentation.py 逐个模式核一遍键覆盖。
+人话标题 = {
+    "结构化摘要": "这份文件在说什么", "核心争议": "双方在争什么", "推理链路": "法院是怎么推的",
+    "法条适用精析": "依据的是哪几条法律", "程序问题识别": "程序上有没有问题",
+    "未回答问题": "这份判决没说清的", "对立解释路径": "对方还能怎么解释", "论证完整性检查": "说理有没有说圆",
+    "法律关系": "你们之间是什么关系", "事实与证据": "手上有什么证据", "对抗路径": "双方会怎么争",
+    "风险推演": "可能发生什么坏事", "行动建议": "接下来可以做什么",
+    "风险清单": "哪些条款对你不利", "缺失条款": "合同里没写的", "失衡条款": "权利义务不对等的",
+    "歧义表述": "写得含糊、日后会吵的", "谈判顺序": "先争哪条、后让哪条", "总结": "一句话结论",
+    "合同类型": "我们把它当成哪类合同",
+}
+
+
+def 叫法(键):
+    return 人话标题.get(键, 键)
+
+
 @app.route("/download", methods=["POST"])
 def 下载路由():
-    """把分析结果转成可下载的文本报告（通用）"""
-    data = request.json
-    报告 = f"""法律分析报告
+    """把分析结果转成可下载的文本报告（通用）。
+
+    下载件是拿去**给别人看**的（律师、HR、对方），所以必须带上核验读数：
+    只带分析文字的话，看的人无从知道这份东西核对过什么、没核对什么。
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        # 不给个默认的 {}：那等于"传错了也给你出一份空报告"，用户拿到手还以为下载成功了
+        return jsonify({"error": "请求体不是一份 JSON 对象"}), 400
+    头 = f"""法律分析报告
 {'='*50}
 名称：{data.get('判例名', '')}
 日期：{date.today()}
 """
-    跳过 = {'判例名', '法条统计', '法条对照', '溯源'}
-    for key, val in data.items():
-        if key in 跳过 or not val:
-            continue
-        报告 += f"""
+    # 读数排在正文之前：拿给别人看的时候，第一屏就该说清这份东西凭什么可信、
+    # 以及哪些地方工具没核过。
+    核 = data.get('核验读数') or {}
+    if 核 or data.get('等级'):
+        头 += f"""
+这份报告核对到什么程度
+{'─'*40}
+可信度等级：{data.get('等级') or '未评'}"""
+        if 核:
+            头 += (f"\n依据共 {核.get('引用总数', '?')} 处："
+                   f"逐条核到原文 {核.get('核到', 0)} 处"
+                   f"、对不上 {核.get('对不上', 0)} 处"
+                   f"、没法核 {核.get('没法核', 0)} 处"
+                   f"（其中 {核.get('库外', 0)} 处是本工具没收录的法律）")
+        if data.get('覆盖度') is not None:
+            头 += f"\n核对覆盖：{round(data['覆盖度'] * 100)}%"
+    for 标题, 键 in (("要你人去核实的", '待核实'), ("本工具的覆盖边界（不代表结论有误）", '工具边界')):
+        列 = data.get(键) or []
+        if 列:
+            头 += f"\n\n{标题}\n{'─'*40}\n" + "\n".join(f"· {x}" for x in 列)
 
-{key}
+    跳过 = {'判例名', '法条统计', '法条对照', '溯源', '核验读数', '覆盖度', '等级',
+            '待核实', '工具边界'}
+    正文 = ""
+    for key, val in data.items():
+        if key in 跳过 or not val or isinstance(val, (dict, list)):
+            continue
+        正文 += f"""
+
+{叫法(key)}
 {'─'*40}
 {val}
 """
-    报告 += f"""
-法条统计
-{'─'*40}
-{data.get('法条统计', '')}
+    附录 = ""
+    if data.get('法条统计'):
+        附录 += f"\n\n法条统计\n{'─'*40}\n{data['法条统计']}\n"
+    for 条目 in (data.get('法条对照') or []):
+        if not isinstance(条目, dict):
+            continue
+        附 = []
+        if 条目.get('施行日期'):
+            附.append(f"施行: {条目['施行日期']}")
+        if 条目.get('取代'):
+            附.append(条目['取代'])
+        附录 += (f"\n【{条目.get('法名', '')}】{条目.get('引用', '')}"
+                 f"（{条目.get('状态') or '状态未知'}）"
+                 + (f" {' · '.join(附)}" if 附 else "")
+                 + f"\n{条目.get('条文', '')}\n")
+    溯源块 = ""
+    溯源数据 = data.get('溯源') if isinstance(data.get('溯源'), dict) else {}
+    for item in (溯源数据.get('items') or []):
+        mark = "" if item.get('有效') else "⚠️ 原文里没有这一段："
+        溯源块 += f"\n{mark}原文第{item.get('段号', '')}段：\n{item.get('内容', '')}\n"
+    if 附录 or 溯源块:
+        附录 = f"\n\n核到的法条原文\n{'─'*40}\n{附录}{溯源块}"
 
-法条对照
-{'─'*40}
-"""
-    for 条目 in data.get('法条对照', []):
-        报告 += f"\n【{条目.get('法名', '')}】{条目.get('引用', '')}\n{条目.get('条文', '')}\n"
+    报告 = 头 + 正文 + 附录 + f"""
 
-    报告 += f"""
-溯源
-{'─'*40}
-"""
-    for item in data.get('溯源', {}).get('items', []):
-        mark = "" if item.get('有效') else "⚠️ "
-        报告 += f"\n{mark}原文第{item.get('段号', '')}段：\n{item.get('内容', '')}\n"
-
-    报告 += f"""
 {'='*50}
-判例助手自动生成 | {date.today()}
+本报告由「判例助手」自动生成 | {date.today()}
+它做的事情只有一件：把报告里引用的每一条法律、每一段合同原文拿回去逐字核对。
+它没有判断法律结论对不对，也看不到你手上的完整材料。
+真要签字或真要打官司之前，请带原件找执业律师核实。
 """
-
     from flask import Response
     return Response(
         报告,
@@ -620,60 +793,87 @@ def 下载路由():
         }
     )
 
+def _列表内字符串(值, 上限=20):
+    """客户端传来的"模块名列表"：只留字符串、去重、截上限。非列表 → 空。"""
+    if not isinstance(值, list):
+        return []
+    出 = []
+    for x in 值:
+        if isinstance(x, str) and x.strip() and x.strip() not in 出:
+            出.append(x.strip()[:60])
+    return 出[:上限]
+
+
 @app.route("/feedback", methods=["POST"])
 def 反馈路由():
-    """接收结构化反馈：有帮助程度 + 最有/最没用模块 + 必须保留模块 + 问题类型 + 可选文字"""
-    data = request.json
-    判例名 = data.get("case_name", "未知")
-    分析日期 = data.get("date", str(date.today()))
-    有帮助程度 = data.get("helpfulness", "")
-    最有价值 = data.get("most_valuable", [])
-    最没用 = data.get("least_valuable", [])
-    必须保留 = data.get("keep_three", [])
-    问题类型 = data.get("issue_types", [])
-    备注 = data.get("comment", "").strip()
+    """接收结构化反馈：有帮助程度 + 用得上/希望删掉的模块 + 问题类型 + 可选文字。
 
+    ⚠️ 原来文件名是 `f"{今天}_{判例名}_反馈.json"`：同一天两个人对同名合同（"劳动合同"
+    是最常见的那种）提交反馈，**后一条会把前一条原地覆盖掉**，而且是静默的。
+    这份问卷是决定下一版砍哪个模块的唯一输入，丢一条就是丢一票。
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "请求体不是一份 JSON 对象"}), 400
+    有帮助程度 = data.get("helpfulness", "")
     if 有帮助程度 not in ("very", "somewhat", "little", "none"):
-        return jsonify({"error": "请选择有帮助程度"}), 400
+        return jsonify({"error": "请先选一下这份结果对你有帮助吗"}), 400
+
+    判例名 = data.get("case_name")
+    判例名 = 判例名.strip()[:80] if isinstance(判例名, str) and 判例名.strip() else "未命名"
+    备注 = data.get("comment", "")
+    备注 = 备注.strip()[:2000] if isinstance(备注, str) else ""
+    分析日期 = data.get("date")
+    if not (isinstance(分析日期, str) and re.fullmatch(r'\d{4}-\d{2}-\d{2}', 分析日期)):
+        分析日期 = str(date.today())
 
     反馈数据 = {
         "判例名": 判例名,
         "分析日期": 分析日期,
         "有帮助程度": 有帮助程度,
-        "最有价值模块": 最有价值,
-        "最没用模块": 最没用,
-        "必须保留模块": 必须保留,
-        "问题类型": 问题类型,
+        "最有价值模块": _列表内字符串(data.get("most_valuable")),
+        "最没用模块": _列表内字符串(data.get("least_valuable")),
+        "问题类型": _列表内字符串(data.get("issue_types"), 上限=5),
         "备注": 备注,
         "提交时间": str(date.today()),
     }
 
     反馈目录 = os.path.join(用户数据目录(), "feedback")
     os.makedirs(反馈目录, exist_ok=True)
-    文件名 = f"{date.today()}_{判例名}_反馈.json"
-    with open(os.path.join(反馈目录, 文件名), "w") as f:
+    # 名字里带微秒时间戳而不是"当天第几条"：数条数再 +1 在并发下会撞（两个请求读到
+    # 同一个数），而这条链路的整个主题就是"别让反馈静默丢掉"。
+    戳 = datetime.now().strftime("%H%M%S-%f")
+    文件名 = f"{date.today()}_{戳}_{_安全名(判例名)}_反馈.json"
+    with open(os.path.join(反馈目录, 文件名), "w", encoding="utf-8") as f:
         json.dump(反馈数据, f, ensure_ascii=False)
-
     return jsonify({"ok": True, "message": "感谢反馈！"})
 
-@app.route("/feedback-data")
-def 反馈数据路由():
-    """查看所有用户反馈汇总"""
-    if not os.path.exists(数据根目录):
-        return jsonify({"总数": 0, "反馈": []})
+
+def _收集反馈(uids):
     全部 = []
-    for uid in os.listdir(数据根目录):
+    for uid in uids:
         反馈目录 = os.path.join(数据根目录, uid, "feedback")
         if not os.path.isdir(反馈目录):
             continue
         for fname in sorted(os.listdir(反馈目录), reverse=True):
             try:
-                with open(os.path.join(反馈目录, fname), "r") as f:
+                with open(os.path.join(反馈目录, fname), encoding="utf-8") as f:
                     d = json.load(f)
                 d["用户ID"] = uid[:8]
                 全部.append(d)
             except Exception:
                 pass
+    return 全部
+
+
+@app.route("/feedback-data")
+def 反馈数据路由():
+    """跨用户汇总 —— 所以它得把门。没设 ADMIN_TOKEN 时只对本机开。"""
+    if not _是能管后台():
+        return jsonify({"error": "需要管理权限（本机直接访问，或带 ?token=ADMIN_TOKEN）"}), 403
+    if not os.path.exists(数据根目录):
+        return jsonify({"总数": 0, "反馈": []})
+    全部 = _收集反馈(os.listdir(数据根目录))
     from flask import Response
     return Response(
         json.dumps({"总数": len(全部), "反馈": 全部[-50:]}, ensure_ascii=False, indent=2),
@@ -681,12 +881,26 @@ def 反馈数据路由():
     )
 
 
+@app.route("/my-feedback")
+def 我的反馈路由():
+    """给普通用户看**自己**交过什么 —— 原来唯一的口子是跨用户的 /feedback-data，
+    想"我能不能看到自己的反馈"只能把管理口子的地址给他，那就变成所有人都能看别人的。
+    """
+    uid = 获取用户ID()
+    全部 = _收集反馈([uid])
+    return jsonify({"总数": len(全部), "反馈": 全部[-20:]})
+
+
 @app.route("/dashboard")
 def 后台面板():
-    """访问量统计面板"""
+    """访问量统计。跨用户汇总 —— 和管理口一样把门，没设 ADMIN_TOKEN 时只对本机开。"""
+    if not _是能管后台():
+        return jsonify({"error": "需要管理权限（本机直接访问，或带 ?token=ADMIN_TOKEN）"}), 403
+    # ⚠️ 原来只有两个桶，第二个是 else 兜底："判决书分析"。合同审查模式上线之后，
+    # 每一份合同报告都被算进"判决书分析"里 —— 也就是说这个看板上唯一和现在产品
+    # 对得上的数字，从第一天起就是错的。改成按 模式 字段逐个点名。
+    分模式 = {"合同审查": 0, "案情分析": 0, "判决书分析": 0}
     分析总数 = 0
-    判决书数 = 0
-    案情数 = 0
     用户集合 = set()
     if os.path.exists(数据根目录):
         for uid in os.listdir(数据根目录):
@@ -695,36 +909,47 @@ def 后台面板():
                 continue
             用户集合.add(uid)
             for fname in os.listdir(user_dir):
-                if fname.endswith(".json") and not fname.startswith("limit"):
-                    分析总数 += 1
-                    try:
-                        with open(os.path.join(user_dir, fname)) as f:
-                            d = json.load(f)
-                        if d.get("模式") == "案情分析":
-                            案情数 += 1
-                        else:
-                            判决书数 += 1
-                    except Exception:
-                        pass
-    反馈数 = 0
-    if os.path.exists(数据根目录):
-        for uid in os.listdir(数据根目录):
-            fb_dir = os.path.join(数据根目录, uid, "feedback")
-            if os.path.isdir(fb_dir):
-                反馈数 += len([f for f in os.listdir(fb_dir) if f.endswith(".json")])
+                if not fname.endswith(".json") or fname.startswith(("limit_", "session_secret")):
+                    continue
+                分析总数 += 1
+                try:
+                    with open(os.path.join(user_dir, fname), encoding="utf-8") as f:
+                        d = json.load(f)
+                    名 = d.get("模式") or "未标注"
+                    分模式[名] = 分模式.get(名, 0) + 1
+                except Exception:
+                    pass
+    全部反馈 = _收集反馈(os.listdir(数据根目录)) if os.path.exists(数据根目录) else []
+    有帮助 = sum(1 for x in 全部反馈 if x.get("有帮助程度") in ("very", "somewhat"))
     from flask import Response
     return Response(
         json.dumps({
             "分析总数": 分析总数,
-            "判决书分析": 判决书数,
-            "案情分析": 案情数,
+            "分模式": 分模式,
             "用户数": len(用户集合),
-            "反馈数": 反馈数,
+            "反馈数": len(全部反馈),
+            "反馈觉得有帮助": 有帮助,
+            # 这两项是决定"要不要砍掉某个模块"的直接输入，原来得自己去翻文件
+            "被点名要删的模块": _计数(全部反馈, "最没用模块"),
+            "被点名有用的模块": _计数(全部反馈, "最有价值模块"),
         }, ensure_ascii=False, indent=2),
         mimetype="application/json; charset=utf-8"
     )
 
 
+def _计数(反馈列表, 键):
+    计 = {}
+    for x in 反馈列表:
+        for 模块 in (x.get(键) or []):
+            计[模块] = 计.get(模块, 0) + 1
+    return dict(sorted(计.items(), key=lambda kv: -kv[1]))
+
+
 if __name__ == "__main__":
-    print("判例助手网页版已启动 → http://127.0.0.1:5050")
-    app.run(debug=True, host="0.0.0.0", port=5050)
+    地址 = os.environ.get("BIND_HOST", "127.0.0.1")
+    端口 = int(os.environ.get("PORT", "5050"))
+    print(f"判例助手网页版已启动 → http://{地址}:{端口}")
+    # 原来这里写死 host="0.0.0.0" —— 在这台机器上一启动，局域网里任何人都能打开它，
+    # 而 是本机访问() 就不再豁免，等于把自己的开发服务挂成了公网服务。
+    # 要给别人访问时自己说：BIND_HOST=0.0.0.0。
+    app.run(debug=True, host=地址, port=端口)

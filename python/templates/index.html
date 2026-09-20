@@ -99,6 +99,8 @@
   }
   .input-row input[type="text"]:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(30,58,95,.08); }
   .input-row input[type="text"]::placeholder { font-size: 13px; }
+  /* 跟在输入框下面的一条说明。缩进对齐输入框（label 占 60px + 10px 间距），窄屏再抹平 */
+  .field-hint { font-size: 12px; color: var(--text-dim); margin: -6px 0 12px 70px; line-height: 1.7; }
 
   textarea {
     width: 100%; height: 200px;
@@ -175,7 +177,8 @@
   }
   .card:hover { border-color: var(--navy); }
   .card h3 { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .card .content { font-size: 13px; color: var(--text); white-space: pre-wrap; line-height: 1.85; }
+  /* 正文是给人读的那一层，13px 在手机上偏小；标签/明细这类辅助信息才留在 11-12px */
+  .card .content { font-size: 14px; color: var(--text); white-space: pre-wrap; line-height: 1.9; }
 
   .card-summary {
     background: var(--surface);
@@ -212,9 +215,9 @@
     border-left: 3px solid var(--navy);
     padding: 10px 14px; margin-bottom: 6px;
     border-radius: 0 8px 8px 0;
-    font-size: 12px; color: var(--text);
+    font-size: 13px; color: var(--text); line-height: 1.75;
   }
-  .trace-item .label { font-size: 10px; color: var(--navy); font-weight: 700; margin-bottom: 2px; }
+  .trace-item .label { font-size: 11px; color: var(--navy); font-weight: 700; margin-bottom: 2px; }
   .trace-item.invalid { border-left-color: var(--red); }
   .trace-item.invalid .label { color: var(--red); }
 
@@ -228,15 +231,15 @@
   .law-item {
     background: var(--surface2);
     padding: 10px 14px; margin-bottom: 6px;
-    border-radius: 8px; font-size: 12px; color: var(--text);
-    border: 1px solid var(--border);
+    border-radius: 8px; font-size: 13px; color: var(--text);
+    border: 1px solid var(--border); line-height: 1.75;
   }
-  .law-item .law-name { font-size: 11px; color: var(--navy); font-weight: 700; margin-bottom: 4px; }
+  .law-item .law-name { font-size: 12px; color: var(--navy); font-weight: 700; margin-bottom: 4px; }
 
   /* ---- 验证 ---- */
   .validation {
     padding: 10px 16px; border-radius: 8px;
-    font-size: 12px; margin-bottom: 14px; font-weight: 500;
+    font-size: 13px; margin-bottom: 14px; font-weight: 500; line-height: 1.7;
   }
   .validation.pass { background: #eef6f0; border: 1px solid #b8d4c0; color: var(--green); }
   .validation.warn { background: #fdf8ed; border: 1px solid #e8d5a0; color: var(--amber); }
@@ -247,7 +250,7 @@
   .risk-section { margin-bottom: 14px; }
   .risk-item {
     padding: 12px 16px; border-radius: 8px; margin-bottom: 6px;
-    font-size: 13px; font-weight: 500;
+    font-size: 14px; font-weight: 500; line-height: 1.75;
     display: flex; align-items: flex-start; gap: 8px;
     animation: fadeInUp .35s ease backwards;
   }
@@ -260,7 +263,7 @@
   .disclaimer {
     background: #fff8e8; border: 1px solid #f0d9a8; border-left: 4px solid #d99a1c;
     border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
-    font-size: 13px; line-height: 1.8; color: #6b4e12;
+    font-size: 14px; line-height: 1.85; color: #6b4e12;
   }
   .disclaimer b { color: #8a5a06; }
 
@@ -282,12 +285,12 @@
   .trust-score-ring.low { background: #fef0f0; border: 2px solid var(--red); color: var(--red); }
   .trust-detail { flex: 1; min-width: 180px; }
   .trust-detail .trust-label { font-size: 11px; color: var(--text-dim); font-weight: 600; }
-  .trust-breakdown { font-size: 11px; color: var(--text-dim); margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .trust-breakdown { font-size: 12px; color: var(--text-dim); margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
   .trust-breakdown .tbitem { display: flex; align-items: center; gap: 3px; }
   .trust-breakdown .tbitem.up { color: var(--green); }
   .trust-breakdown .tbitem.down { color: var(--red); }
   /* 两格读数：核到了多少 / 有多少压根没法核。等级只是一个词，撑不住"这份报告凭什么可信" */
-  .trust-coverage { font-size: 12px; color: var(--text); margin-top: 6px; line-height: 1.7; }
+  .trust-coverage { font-size: 14px; color: var(--text); margin-top: 6px; line-height: 1.75; }
   .trust-coverage b { font-weight: 700; }
   .trust-coverage .uncore { color: var(--amber, #b7791f); }
 
@@ -333,6 +336,15 @@
     .main { padding: 16px 10px; }
     .input-section { padding: 16px; }
     .trust-dashboard { flex-direction: column; align-items: flex-start; }
+    /* 手机上标签和输入框叠起来，70% 那套宽度是让标签占一整行 */
+    .input-row label { min-width: 0; flex: 1 1 100%; margin-bottom: 2px; }
+    .input-row input[type="text"] { flex: 1 1 100%; max-width: none; }
+    .field-hint { margin-left: 0; }
+    textarea { height: 260px; }
+    /* 主操作要够大够好点：分析一次要等近一分钟，误点在"清空"上的代价不小 */
+    .btn { padding: 12px 20px; font-size: 14px; }
+    .btn-row { gap: 6px; }
+    .fb-radio, .fb-chip { padding: 10px 14px; font-size: 13px; }
   }
 </style>
 </head>
@@ -374,8 +386,11 @@
       <input type="text" id="caseName" placeholder="可留空，AI自动提取，例：张某诉李某合同纠纷案">
     </div>
     <div class="input-row">
-      <label id="dateLabel">案发时间</label>
-      <input type="text" id="caseDate" maxlength="40" placeholder="选填 · 2023-04-05 · 不填则时效未校验">
+      <label id="dateLabel">签署时间</label>
+      <input type="text" id="caseDate" maxlength="40" placeholder="填合同落款那天，如 2023-04-05；只写 2023 或 2023-04 也行">
+    </div>
+    <div class="field-hint" id="dateHint">
+      填了它才会去查"签这份合同时，报告里引的那几条法律生效了没有"；不填这一维就没核。
     </div>
 
     <textarea id="caseText" placeholder="粘贴判决书全文，或点击下方上传文件……"></textarea>
@@ -432,7 +447,7 @@
     </div>
 
     <div class="trace-section" id="trace-section" style="display:none;">
-      <h3 class="collapse-toggle" onclick="this.classList.toggle('open');document.getElementById('trace-body').classList.toggle('open')"><span class="arrow">▶</span> 🔍 溯源对比</h3>
+      <h3 class="collapse-toggle" onclick="this.classList.toggle('open');document.getElementById('trace-body').classList.toggle('open')"><span class="arrow">▶</span> 🔍 原文回查（AI 说出自哪一段的那些引用）</h3>
       <div class="collapse-body" id="trace-body"><div id="trace-items"></div></div>
     </div>
 
@@ -454,30 +469,15 @@
       <button class="btn btn-primary" onclick="下载报告()" id="btnDownload" style="display:none;">📥 下载分析报告</button>
     </div>
 
-    </div>
-
-    <!-- 法条库对照 -->
-    <div class="law-section" id="law-section" style="display:none;">
-      <h3 class="collapse-toggle" onclick="this.classList.toggle('open');document.getElementById('law-body').classList.toggle('open')"><span class="arrow">▶</span> 📖 法条库对照</h3>
-      <div class="collapse-body" id="law-body"><div id="law-items"></div></div>
-    </div>
-
-    <!-- 验证 -->
-    <div class="validation pass" id="validation"></div>
-
-    <!-- 下载按钮 -->
-    <div style="text-align:center; margin-top:8px;">
-      <button class="btn btn-primary" onclick="下载报告()" id="btnDownload" style="display:none;">📥 下载分析报告</button>
-    </div>
-
-    <!-- 反馈区 -->
-    <div id="feedback-section" style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:20px; margin-top:18px;">
+    <!-- 反馈区放在 #results **里面**：它问的是"这一次分析"怎么样，
+         跟着结果一起显示/隐藏才对 —— 放在外面时点「清空」结果没了、问卷还杵在那儿。 -->
+    <div id="feedback-section" style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-top:18px;">
       <div id="feedback-form">
-      <div style="font-size:13px; font-weight:700; color:var(--navy); margin-bottom:16px; font-family:'Noto Serif SC','Songti SC',serif;">📋 帮助我们改进（全选择题，30秒搞定）</div>
+      <div style="font-size:14px; font-weight:700; color:var(--navy); margin-bottom:6px;">这份结果对你有用吗？（30 秒，全是选择题）</div>
+      <div style="font-size:12px; color:var(--text-dim); margin-bottom:16px;">只有第 1 题必填，其余跳过也不影响你看报告。</div>
 
-      <!-- 第一步：有帮助程度 -->
       <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">1. 这个分析结果对你有帮助吗？<span style="color:var(--red);">*</span></div>
+        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">1. 这份结果对你有帮助吗？<span style="color:var(--red);">*</span></div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;" id="q-helpfulness">
           <label class="fb-radio"><input type="radio" name="helpfulness" value="very"> 非常有帮助</label>
           <label class="fb-radio"><input type="radio" name="helpfulness" value="somewhat"> 有一点帮助</label>
@@ -486,49 +486,40 @@
         </div>
       </div>
 
-      <!-- 第二步：最有价值模块 -->
       <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">2. 哪个模块最有价值？（可多选）<span style="color:var(--red);">*</span></div>
+        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">2. 哪几部分你最用得上？（可多选，可跳过）</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-valuable"></div>
       </div>
 
-      <!-- 第三步：最没用模块 -->
       <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">3. 哪个模块最没用？（可多选）<span style="color:var(--red);">*</span></div>
+        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">3. 哪几部分你希望我们删掉？（可多选，可跳过 —— 这题直接决定下一个版本砍什么）</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-useless"></div>
       </div>
 
-      <!-- 第四步：如果只能保留3个模块 -->
       <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">4. 如果只能保留3个模块，你会留下哪些？（选1-3个）<span style="color:var(--red);">*</span></div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="q-keep"></div>
-      </div>
-
-      <!-- 第五步：问题类型 -->
-      <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">5. 遇到了什么问题？（可选）</div>
+        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">4. 遇到了什么问题？（可选）</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;" id="q-issues">
-          <label class="fb-radio"><input type="radio" name="issue_type" value="ai_error"> AI分析错误</label>
-          <label class="fb-radio"><input type="radio" name="issue_type" value="law_error"> 法条引用错误</label>
-          <label class="fb-radio"><input type="radio" name="issue_type" value="bug"> 页面Bug</label>
-          <label class="fb-radio"><input type="radio" name="issue_type" value="slow"> 响应太慢</label>
+          <label class="fb-radio"><input type="radio" name="issue_type" value="ai_error"> 分析内容不对</label>
+          <label class="fb-radio"><input type="radio" name="issue_type" value="law_error"> 法律条文引用错了</label>
           <label class="fb-radio"><input type="radio" name="issue_type" value="unclear"> 看不懂结果</label>
+          <label class="fb-radio"><input type="radio" name="issue_type" value="slow"> 等得太久</label>
+          <label class="fb-radio"><input type="radio" name="issue_type" value="bug"> 页面出问题</label>
           <label class="fb-radio"><input type="radio" name="issue_type" value="other"> 其它</label>
         </div>
       </div>
 
-      <!-- 第六步：补充意见 -->
       <div style="margin-bottom:16px;">
-        <div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">6. 补充意见（选填）</div>
-        <textarea id="feedbackComment" placeholder="任何想说的……" style="width:100%; height:64px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text-bright); font-size:13px; font-family:inherit; resize:vertical;"></textarea>
+        <div style="font-size:13px; color:var(--text); margin-bottom:8px;">5. 补充意见（选填）</div>
+        <textarea id="feedbackComment" placeholder="任何想说的……" style="width:100%; height:64px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text-bright); font-size:14px; font-family:inherit; resize:vertical;"></textarea>
       </div>
 
-      <button class="btn btn-primary" onclick="提交反馈()" style="font-size:13px; padding:10px 28px;">提交反馈</button>
+      <button class="btn btn-primary" onclick="提交反馈()" style="font-size:14px; padding:10px 28px;">提交反馈</button>
       <span id="feedback-err" style="display:none; color:var(--red); font-size:13px; margin-left:12px;"></span>
       </div><!-- #feedback-form -->
-      <div id="feedback-done" style="display:none; color:var(--green); font-size:14px; text-align:center; padding:12px;">✅ 感谢反馈！你的选择会直接影响产品方向。</div>
-      <span id="feedback-err" style="display:none; color:var(--red); font-size:13px; margin-left:12px;"></span>
+      <div id="feedback-done" style="display:none; color:var(--green); font-size:14px; text-align:center; padding:12px;">✅ 收到，谢谢 —— 这些会直接决定下一个版本留哪几块。</div>
     </div>
+
+  </div><!-- /#results -->
 
     <style>
       .fb-radio {
@@ -551,9 +542,8 @@
       .fb-chip input { display:none; }
     </style>
 
-  </div>
-
-  <!-- 历史记录 -->
+  <!-- 历史记录：必须在 .main 里面。原来这里多一个 </div> 把 .main 提前收掉，
+       整个历史区落在居中 900px 栏之外 —— 窄屏看不出来，宽屏顶到窗口两边。 -->
   <div class="history-section">
     <div class="history-toggle" onclick="切换历史()">
       <span id="historyArrow">▶</span> 历史分析记录 <span id="historyCount" style="font-weight:400;color:var(--text-dim);"></span>
@@ -572,6 +562,44 @@
 // ============================================================
 // 前端交互逻辑
 // ============================================================
+
+// ---- 往页面里放文字的两条路，只许走这两条 ----
+// 报告里的每一段正文都来自模型输出或用户自己粘的合同，文件名也是输入。
+// 拼进 innerHTML 就等于让这些数据在页面上拿到执行权：上传一份把合同名写成
+// `<img src=x onerror=...>` 的文件，下次打开历史列表就会执行一次。
+// 所以带内容的节点一律用 元素() 建（走 textContent），只有结构模板能走
+// 模板字符串，并且模板里每一处数据都必须过 转义()。
+function 转义(文字) {
+  return String(文字 === null || 文字 === undefined ? '' : 文字)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function 元素(标记, 类名, 文字) {
+  const 节 = document.createElement(标记);
+  if (类名) 节.className = 类名;
+  if (文字 !== undefined && 文字 !== null) 节.textContent = 文字;
+  return 节;
+}
+function 清空节点(id) {
+  const 节 = document.getElementById(id);
+  节.innerHTML = "";
+  return 节;
+}
+
+// 卡片标题给人看的是人话，但**内部键名一个字不改** —— 后端契约、存储的 JSON、
+// 测试全押在键名上（`分析模式`、`段落名` 都按这些键取值）。改显示层就够了，
+// 把键名一起改掉，等于把一次文案调整扩散成一次接口变更。
+const 人话标题 = {
+  "结构化摘要": "这份文件在说什么", "核心争议": "双方在争什么", "推理链路": "法院是怎么推的",
+  "法条适用精析": "依据的是哪几条法律", "程序问题识别": "程序上有没有问题",
+  "未回答问题": "这份判决没说清的", "对立解释路径": "对方还能怎么解释", "论证完整性检查": "说理有没有说圆",
+  "法律关系": "你们之间是什么关系", "事实与证据": "手上有什么证据", "对抗路径": "双方会怎么争",
+  "风险推演": "可能发生什么坏事", "行动建议": "接下来可以做什么",
+  "风险清单": "哪些条款对你不利", "缺失条款": "合同里没写的", "失衡条款": "权利义务不对等的",
+  "歧义表述": "写得含糊、日后会吵的", "谈判顺序": "先争哪条、后让哪条",
+  "合同类型": "我们把它当成哪类合同", "总结": "一句话结论",
+};
+function 叫法(键) { return 人话标题[键] || 键; }
 
 // ---- 模式切换 ----
 var 当前模式 = 'contract';
@@ -594,16 +622,22 @@ function 切换模式(mode) {
   const 提示 = document.getElementById('formatHint');
   // 合同模式下比对时效的基准日是签署/履行日，不叫"案发"
   document.getElementById('dateLabel').textContent = mode === 'contract' ? '签署时间' : '案发时间';
+  document.getElementById('caseDate').placeholder = mode === 'contract'
+    ? '填合同落款那天，如 2023-04-05；只写 2023 或 2023-04 也行'
+    : '纠纷发生那天，如 2023-04-05；只写 2023 或 2023-04 也行';
+  document.getElementById('dateHint').textContent = mode === 'contract'
+    ? '填了它才会去查"签这份合同时，报告里引的那几条法律生效了没有"；不填这一维就没核。'
+    : '填了它才会去查"事发时，报告里引的那几条法律生效了没有"；不填这一维就没核。';
   if (mode === 'case') {
     document.getElementById('caseNameLabel').textContent = '纠纷名称';
-    document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：合伙纠纷';
+    document.getElementById('caseName').placeholder = '可留空，系统自动起一个，例：合伙纠纷';
     document.getElementById('caseText').placeholder = '请尽量完整描述纠纷经过、双方主张和现阶段情况……';
     提示.textContent = '描述你的纠纷情况 · 建议详细陈述事实经过';
   } else if (mode === 'contract') {
     document.getElementById('caseNameLabel').textContent = '合同名称';
     document.getElementById('caseName').placeholder = '可留空，例：XX系统运维服务合同';
     document.getElementById('caseText').placeholder = '粘贴合同全文，或上传 .docx / .pdf / .txt（上传后会先给你看解析结果）……';
-    提示.textContent = '站我方审：风险清单 + 谈判让步顺序 · 每条结论会回查合同原文';
+    提示.textContent = '站在你这方审：哪些条款对你不利 + 先争哪条后让哪条 · 每条结论都会回查合同原文';
   } else {
     document.getElementById('caseNameLabel').textContent = '判例名称';
     document.getElementById('caseName').placeholder = '可留空，AI自动提取，例：张某诉李某合同纠纷案';
@@ -621,19 +655,26 @@ function 切换子模式(mode) {
 }
 
 // ---- 页面加载：查剩余次数 ----
+function 写次数(剩余, 上限) {
+  // 后端用 null 表示"这一路不受限"（本机访问 / DAILY_LIMIT=0）。
+  // ⚠️ 这里以前判的是 `>= 9999`：后端把魔数换成 null 之后这条分支就再也走不到，
+  // 于是本机跑完一次分析，标题栏显示「今日剩余 null/null 次」。
+  // 两个消费者（进页面的 GET 和分析完的 POST 响应）现在共用这一支判断，不再各写一遍。
+  const 格 = document.getElementById("remaining");
+  if (上限 === null || 上限 === undefined) {
+    格.textContent = '本机 · 不限次';
+    格.style.color = 'var(--text-dim)';
+    return;
+  }
+  格.textContent = `今日剩余 ${剩余}/${上限} 次`;
+  格.style.color = 剩余 === 0 ? 'var(--red)' : 'var(--text-dim)';
+}
+
 async function 刷新剩余次数() {
   try {
     const resp = await fetch("/remaining");
     const data = await resp.json();
-    // 后端不再用 9999 这种魔数表示"不限"，而是直接给 null
-    if (data.上限 === null || data.上限 === undefined) {
-      document.getElementById("remaining").textContent = '本机 · 不限次';
-    } else {
-      document.getElementById("remaining").textContent = `今日剩余 ${data.剩余}/${data.上限} 次`;
-    }
-    if (data.剩余 === 0) {
-      document.getElementById("remaining").style.color = "#e05d5d";
-    }
+    写次数(data.剩余, data.上限);
   } catch(e) {
     document.getElementById("remaining").textContent = "";
   }
@@ -700,7 +741,11 @@ async function 开始分析() {
   document.getElementById("loading").classList.add("active");
   document.getElementById("results").classList.remove("active");
   document.getElementById("error").classList.remove("active");
-  document.querySelector(".loading").innerHTML = '<div class="spinner"></div>AI正在分析中……预计20-40秒';
+  // 时间写成一个区间而不是精确数，并且说清这段时间在等什么 ——
+  // 手机上有近一分钟的空屏，一句"六路并行、约 30-50 秒"比"预计20-40秒"少一次以为卡死的怀疑。
+  document.querySelector(".loading").innerHTML =
+    '<div class="spinner"></div>正在逐项分析，并逐条回查原文……' +
+    (当前模式 === 'contract' ? '合同越长按 6 路并行处理，约需 30-60 秒' : '约需 30-50 秒，可以先干别的');
 
   try {
     const response = await fetch("/analyze", {
@@ -736,32 +781,24 @@ function 渲染结果(data) {
   document.getElementById("loading").classList.remove("active");
 
   // 更新剩余次数
-  if (data.剩余次数 !== undefined) {
-    if (data.今日上限 >= 9999) {
-      document.getElementById("remaining").textContent = '测试版 · 不限次';
-    } else {
-      document.getElementById("remaining").textContent = `今日剩余 ${data.剩余次数}/${data.今日上限} 次`;
-      if (data.剩余次数 === 0) document.getElementById("remaining").style.color = "#dc2626";
-    }
-  }
+  if (data.剩余次数 !== undefined) 写次数(data.剩余次数, data.今日上限);
 
   const a = data.分析;
 
   // ⚠️ 风险提示（最优先）
   const riskSection = document.getElementById("risk-section");
-  const riskItems = document.getElementById("risk-items");
+  const riskItems = 清空节点("risk-items");
   if (data.风险列表 && data.风险列表.length > 0) {
     riskSection.style.display = "block";
-    riskItems.innerHTML = data.风险列表.map(r => {
+    data.风险列表.forEach(r => {
       const icon = r.等级 === "danger" ? "🔴" : r.等级 === "warning" ? "🟡" : "⚪";
-      return `<div class="risk-item ${r.等级}">${icon} ${r.内容}</div>`;
-    }).join("");
+      riskItems.appendChild(元素("div", `risk-item ${r.等级}`, `${icon} ${r.内容}`));
+    });
   } else {
     riskSection.style.display = "none";
   }
 
-  // 结构化摘要
-  // 可信度仪表盘（仅显示等级+明细，不显示伪精确数字分）
+  // 可信度仪表盘（只显示等级+明细，不显示伪精确数字分）
   if (data.可信度) {
     const t = data.可信度;
     document.getElementById("trust-dashboard").style.display = "flex";
@@ -770,138 +807,135 @@ function 渲染结果(data) {
     ring.textContent = levelText;
     ring.className = "trust-score-ring " + (t.等级 === "高" ? "high" : t.等级 === "中" ? "mid" : "low");
     ring.style.fontSize = "16px";
-    const breakdownItems = (t.明细 || []).map(d =>
-      `<span class="tbitem ${d.方向 === '正面' ? 'up' : d.方向 === '负面' ? 'down' : ''}">${d.方向 === '正面' ? '▲' : d.方向 === '负面' ? '▼' : '—'} ${d.来源}</span>`
-    ).join("");
-    document.getElementById("trust-breakdown").innerHTML = breakdownItems
-      ? `<span style="font-size:11px;color:var(--text-dim);margin-right:6px;">评分明细：</span>${breakdownItems}`
-      : "";
+    const 明细 = 清空节点("trust-breakdown");
+    (t.明细 || []).forEach(d => {
+      const 头 = d.方向 === '正面' ? '▲' : d.方向 === '负面' ? '▼' : '—';
+      明细.appendChild(元素("span",
+        `tbitem ${d.方向 === '正面' ? 'up' : d.方向 === '负面' ? 'down' : ''}`,
+        `${头} ${d.来源}`));
+    });
+    if (明细.children.length) {
+      明细.insertBefore(元素("span", "", "评分明细："), 明细.firstChild);
+      明细.firstChild.setAttribute("style", "font-size:12px;color:var(--text-dim);margin-right:6px;");
+    }
 
     // 两格读数：等级只是一个词，读者真正要知道的是"核了多少"和"有多少压根没法核"。
     // 一份核到 15 条的报告和一份只核到 1 条的报告，等级可以完全一样 —— 差别必须看得见。
     const 核 = t.核验;
     const 覆盖 = document.getElementById("trust-coverage");
     if (核 && 核.引用总数) {
-      const 没法核说明 = 核.库外 ? `（其中 ${核.库外} 处是本工具没收录的法律）` : "";
+      // 这一段是全文唯一还走 innerHTML 的**数据**渲染（要出 <b>），所以每个 ${} 都必须
+      // 直接套 转义() —— 测试 tests/test_report_presentation.py 就是按这条规则查的，
+      // 套个本地别名（const 数 = 转义）都会让它判不过，这是有意的。
       覆盖.innerHTML =
-        `这份报告的依据共 <b>${核.引用总数}</b> 处：` +
-        `逐条核到原文 <b>${核.核到}</b> 处` +
-        (核.对不上 ? `，<b style="color:var(--red)">对不上 ${核.对不上}</b> 处` : "，对不上 0 处") +
-        `，<span class="uncore">没法核 ${核.没法核} 处</span>${没法核说明}` +
-        (t.覆盖度 !== null && t.覆盖度 !== undefined ? ` —— <b>核对覆盖 ${Math.round(t.覆盖度 * 100)}%</b>` : "");
+        `这份报告的依据共 <b>${转义(核.引用总数)}</b> 处：` +
+        `逐条核到原文 <b>${转义(核.核到)}</b> 处` +
+        (核.对不上 ? `，<b style="color:var(--red)">对不上 ${转义(核.对不上)}</b> 处` : "，对不上 0 处") +
+        `，<span class="uncore">没法核 ${转义(核.没法核)} 处</span>` +
+        (核.库外 ? `（其中 ${转义(核.库外)} 处是本工具没收录的法律）` : "") +
+        (t.覆盖度 !== null && t.覆盖度 !== undefined ? ` —— <b>核对覆盖 ${转义(Math.round(t.覆盖度 * 100))}%</b>` : "");
     } else {
-      覆盖.innerHTML = '<span class="uncore">这份报告没有给出可逐条核对的依据（没引法条条号、也没挂合同条款）—— 一次校验都没发生。</span>';
+      覆盖.textContent = '这份报告没有给出可逐条核对的依据（没引法条条号、也没挂合同条款）—— 一次校验都没发生。';
     }
   } else {
     document.getElementById("trust-dashboard").style.display = "none";
   }
 
   // 动态卡片：根据返回字段渲染
-  const cardTemplates = {
+  const 图标 = {
     "结构化摘要": "📐", "核心争议": "🎯", "推理链路": "🧠",
     "法条适用精析": "⚖️", "对立解释路径": "🔀",
     "论证完整性检查": "🔗", "程序问题识别": "🏛️", "未回答问题": "❓",
     "法律关系": "⚖️", "事实与证据": "📋",
     "对抗路径": "⚔️", "风险推演": "⚠️", "行动建议": "💡",
     "风险清单": "🚨", "缺失条款": "🕳️", "失衡条款": "⚖️",
-    "歧义表述": "❔", "谈判顺序": "🤝",
+    "歧义表述": "❔", "谈判顺序": "🤝", "合同类型": "🏷️",
   };
-  // 卡片标题给人看的是人话，但**内部键名一个字不改** —— 后端契约、存储的 JSON、
-  // 测试全押在键名上（`分析模式`、`段落名` 都按这些键取值）。改显示层就够了，
-  // 把键名一起改掉，等于把一次文案调整扩散成一次接口变更。
-  const 人话标题 = {
-    "结构化摘要": "这份文件在说什么", "核心争议": "双方在争什么", "推理链路": "法院是怎么推的",
-    "法条适用精析": "依据的是哪几条法律", "程序问题识别": "程序上有没有问题",
-    "未回答问题": "这份判决没说清的", "对立解释路径": "对方还能怎么解释", "论证完整性检查": "说理有没有说圆",
-    "法律关系": "你们之间是什么关系", "事实与证据": "手上有什么证据", "对抗路径": "双方会怎么争",
-    "风险推演": "可能发生什么坏事", "行动建议": "接下来可以做什么",
-    "风险清单": "哪些条款对你不利", "缺失条款": "合同里没写的", "失衡条款": "权利义务不对等的",
-    "歧义表述": "写得含糊、日后会吵的", "谈判顺序": "先争哪条、后让哪条",
-  };
-  const grid = document.getElementById("cardGrid");
-  grid.innerHTML = "";
+  const grid = 清空节点("cardGrid");
   const readKeys = ["结构化摘要", "核心争议", "推理链路", "法条适用精析", "程序问题识别"];
   const auditKeys = ["未回答问题", "对立解释路径", "论证完整性检查", "程序问题识别"];
   const visibleKeys = (当前模式 === 'judgment') ? (子模式 === 'read' ? readKeys : auditKeys) : Object.keys(a);
   for (const [key, val] of Object.entries(a)) {
     if (key === "总结" || !val) continue;
     if (当前模式 === 'judgment' && !visibleKeys.includes(key)) continue;
-    const emoji = cardTemplates[key] || "📌";
-    const card = document.createElement("div");
-    card.className = "card";
-    const h3 = document.createElement("h3");
-    h3.textContent = emoji + " " + (人话标题[key] || key);
-    const content = document.createElement("div");
-    content.className = "content";
-    content.textContent = val;
-    card.appendChild(h3);
-    card.appendChild(content);
+    const card = 元素("div", "card");
+    card.appendChild(元素("h3", "", `${图标[key] || "📌"} ${叫法(key)}`));
+    card.appendChild(元素("div", "content", val));
     grid.appendChild(card);
   }
 
-
-
-
-  // 法条统计
+  // 底部这一行是"这份东西多大、当成哪类合同审的"——两个词都得随模式变：
+  // 合同模式下写"判例字数"会让人愣一下，而类型判成"通用"时必须让他看见（旁边那条
+  // note 会解释为什么），否则一张兜底清单查出来的"缺条款"看起来像专业判断。
+  const 份数 = 当前模式 === 'contract' ? '合同' : (当前模式 === 'case' ? '案情' : '判例');
+  const 尾部 = (data.合同类型 ? "  |  按「" + data.合同类型 + "」类合同审" : "");
   const lawEl = document.getElementById("r-lawstats");
-  const 法条信息 = (data.验证 && data.验证.法条统计) ? data.验证.法条统计 : "历史存档";
-  lawEl.textContent = "📋 " + 法条信息 + "  |  判例字数：" + (data.字数 || "?");
+  lawEl.textContent = "📋 " + ((data.验证 && data.验证.法条统计) ? data.验证.法条统计 : "这份记录没有存核验读数")
+    + "  |  " + 份数 + "字数：" + (data.字数 || "?") + 尾部;
 
-  // 溯源（历史数据可能为null）
+  // 原文回查（判决书模式专有：AI 标了原文第几段，段号存不存在一查就知道）
   const trace = data.溯源;
   const traceSection = document.getElementById("trace-section");
-  const traceItems = document.getElementById("trace-items");
+  const traceItems = 清空节点("trace-items");
   if (trace && trace.items && trace.items.length > 0) {
     traceSection.style.display = "block";
-    traceItems.innerHTML = trace.items.map(item => {
-      const cls = item.有效 ? "" : " invalid";
-      return `<div class="trace-item${cls}">
-        <div class="label">原文第${item.段号}段</div>
-        ${item.内容}
-      </div>`;
-    }).join("");
+    trace.items.forEach(item => {
+      const 条 = 元素("div", "trace-item" + (item.有效 ? "" : " invalid"));
+      条.appendChild(元素("div", "label", `原文第${item.段号}段`));
+      条.appendChild(元素("div", "", item.内容));
+      traceItems.appendChild(条);
+    });
   } else if (trace && trace.warning) {
     traceSection.style.display = "block";
-    traceItems.innerHTML = `<div class="trace-item invalid"><div class="label">⚠️</div>${trace.warning}</div>`;
+    const 条 = 元素("div", "trace-item invalid");
+    条.appendChild(元素("div", "label", "⚠️"));
+    条.appendChild(元素("div", "", trace.warning));
+    traceItems.appendChild(条);
   } else {
     traceSection.style.display = "none";
   }
 
-  // 法条库对照（历史数据可能为null）
+  // 法条库对照（拿报告里引的每一条，回法条库找原文）
   const lawSection = document.getElementById("law-section");
-  const lawItems = document.getElementById("law-items");
+  const lawItems = 清空节点("law-items");
   if (data.法条对照 && data.法条对照.length > 0) {
     lawSection.style.display = "block";
-    lawItems.innerHTML = data.法条对照.map(item => {
-      // 状态标签颜色
+    data.法条对照.forEach(item => {
       let 状态色 = "#9ca3af", 状态文字 = item.状态 || "未知";
       if (item.状态 === "现行有效") { 状态色 = "#4ade80"; 状态文字 = "✅ 现行有效"; }
       else if (item.状态 === "已修订") { 状态色 = "#facc15"; 状态文字 = "⚠️ 已修订"; }
       else if (item.状态 === "已废止") { 状态色 = "#f87171"; 状态文字 = "❌ 已废止"; }
-      let 附注 = "";
-      if (item.施行日期) 附注 += ` · 施行: ${item.施行日期}`;
-      if (item.取代) 附注 += ` · ${item.取代}`;
-      return `<div class="law-item">
-        <div class="law-name">
-          ${item.法名} · ${item.引用}
-          <span style="color:${状态色};font-size:11px;margin-left:6px;">${状态文字}</span>
-        </div>
-        ${item.条文}
-        ${附注 ? `<div style="font-size:11px;color:#6b7280;margin-top:4px;">${附注}</div>` : ""}
-      </div>`;
-    }).join("");
+      const 项 = 元素("div", "law-item");
+      const 名 = 元素("div", "law-name");
+      名.appendChild(元素("span", "", `${item.法名} · ${item.引用} `));
+      名.appendChild(元素("span", "", 状态文字)).setAttribute("style",
+        `color:${状态色};font-size:12px;margin-left:6px;`);
+      项.appendChild(名);
+      项.appendChild(元素("div", "", item.条文));
+      const 附注 = [];
+      if (item.施行日期) 附注.push(`施行: ${item.施行日期}`);
+      if (item.取代) 附注.push(item.取代);
+      if (附注.length) 项.appendChild(元素("div", "", 附注.join(" · ")))
+        .setAttribute("style", "font-size:12px;color:var(--text-dim);margin-top:4px;");
+      lawItems.appendChild(项);
+    });
   } else {
     lawSection.style.display = "none";
   }
 
-  // 验证
+  // 格式检查（只查每段字数和有没有引用到法条，**不判断内容对不对**）
   const v = document.getElementById("validation");
-  if (!data.验证 || data.验证.通过) {
+  const 问题 = (data.验证 && data.验证.问题) || [];
+  if (!data.验证) {
+    v.className = "validation warn";
+    v.textContent = "⚠️ 这次打开没有重跑校验 —— 上面看到的读数是从那份报告里存下来的，不是此刻算出来的。";
+  } else if (data.验证.通过) {
     v.className = "validation pass";
-    v.textContent = "✅ 验证通过";
+    v.textContent = "✅ 格式检查通过（只查了每段有没有内容、有没有引用法条，不判断结论对不对）";
   } else {
     v.className = "validation warn";
-    v.innerHTML = data.验证.问题.map(p => `<div class="warn-item">${p}</div>`).join("");
+    v.textContent = "⚠️ 格式检查发现的问题：";
+    问题.forEach(p => v.appendChild(元素("div", "warn-item", p)));
   }
 
 
@@ -914,14 +948,24 @@ function 渲染结果(data) {
   document.getElementById("feedback-form").style.display = "block";
   document.getElementById("feedback-done").style.display = "none";
   document.getElementById("feedback-err").style.display = "none";
-  // 动态生成反馈选项（基于实际分析字段 + 公共模块）
+
+  // 反馈选项：用**给人看的那套名字**做标签，内部键名走 value。
+  // 原来标签和 value 都是键名 —— 卡片已经换成人话，问卷却还在问"哪个模块最没用"，
+  // 而用户看到的是他从没见过的词。
   const analysisKeys = Object.keys(a).filter(k => k !== "总结" && a[k]);
-  const commonModules = ["可信度评分", "综合总结"];
+  const commonModules = ["可信度评分", "一句话结论"];
   const allOptions = [...analysisKeys, ...commonModules];
-  const chipHTML = allOptions.map(k => `<label class="fb-chip"><input type="checkbox" value="${k}"> ${k}</label>`).join("");
-  document.getElementById("q-valuable").innerHTML = chipHTML;
-  document.getElementById("q-useless").innerHTML = chipHTML;
-  document.getElementById("q-keep").innerHTML = chipHTML;
+  [["q-valuable", allOptions], ["q-useless", allOptions]].forEach(([容器, 项]) => {
+    const 格 = 清空节点(容器);
+    项.forEach(k => {
+      const 签 = 元素("label", "fb-chip");
+      const 框 = document.createElement("input");
+      框.type = "checkbox"; 框.value = k;
+      签.appendChild(框);
+      签.appendChild(document.createTextNode(` ${叫法(k)}`));
+      格.appendChild(签);
+    });
+  });
   // 清除上次勾选和文字
   document.querySelectorAll("#feedback-section input[type=radio], #feedback-section input[type=checkbox]").forEach(el => el.checked = false);
   document.getElementById("feedbackComment").value = "";
@@ -934,52 +978,45 @@ function 收集选中值(容器ID) {
   return Array.from(checks).map(c => c.value);
 }
 
+function 反馈报错(文字) {
+  const 位 = document.getElementById("feedback-err");
+  位.textContent = 文字;
+  位.style.display = "inline";
+}
+
 async function 提交反馈() {
   const helpfulness = document.querySelector('input[name="helpfulness"]:checked');
-  if (!helpfulness) {
-    document.getElementById("feedback-err").style.display = "inline";
-    document.getElementById("feedback-err").textContent = "请选择有帮助程度";
-    return;
-  }
-  const mostValuable = 收集选中值("q-valuable");
-  if (mostValuable.length === 0) {
-    document.getElementById("feedback-err").style.display = "inline";
-    document.getElementById("feedback-err").textContent = "请至少选一个最有价值的模块";
-    return;
-  }
-  const leastValuable = 收集选中值("q-useless");
-  if (leastValuable.length === 0) {
-    document.getElementById("feedback-err").style.display = "inline";
-    document.getElementById("feedback-err").textContent = "请至少选一个最没用的模块（可如实选，这对我们非常重要）";
-    return;
-  }
-  const keepThree = 收集选中值("q-keep");
-  if (keepThree.length === 0 || keepThree.length > 3) {
-    document.getElementById("feedback-err").style.display = "inline";
-    document.getElementById("feedback-err").textContent = "请选择1-3个你不能失去的模块";
-    return;
-  }
+  if (!helpfulness) { 反馈报错("先选一下这份结果对你有帮助吗，只这一题必填。"); return; }
   document.getElementById("feedback-err").style.display = "none";
 
   const issueType = document.querySelector('input[name="issue_type"]:checked');
   const comment = document.getElementById("feedbackComment").value.trim();
 
   try {
-    await fetch("/feedback", {
+    const 回 = await fetch("/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         case_name: window._lastResult?.判例名 || "未知",
         date: new Date().toISOString().slice(0, 10),
         helpfulness: helpfulness.value,
-        most_valuable: mostValuable,
-        least_valuable: leastValuable,
-        keep_three: keepThree,
+        most_valuable: 收集选中值("q-valuable"),
+        least_valuable: 收集选中值("q-useless"),
         issue_types: issueType ? [issueType.value] : [],
         comment: comment
       })
     });
-  } catch(e) { /* 静默失败 */ }
+    // 原来这里无论成败都显示"✅ 收到" —— 而问卷是唯一决定砍哪个模块的输入，
+    // 悄悄丢掉一条比不显示感谢糟得多。
+    if (!回.ok) {
+      const 错 = await 回.json().catch(() => ({}));
+      反馈报错(错.error || "这条反馈没存上，可以再点一次提交。");
+      return;
+    }
+  } catch(e) {
+    反馈报错("网络不通，这条反馈没送出去。可以再点一次提交。");
+    return;
+  }
 
   // 隐藏表单，显示感谢（保留DOM，下次分析可重置）
   document.getElementById("feedback-form").style.display = "none";
@@ -989,11 +1026,18 @@ async function 提交反馈() {
 // ---- 下载报告 ----
 function 下载报告() {
   if (!window._lastResult) return;
-  const a = window._lastResult.分析;
-  const body = Object.assign({ 判例名: window._lastResult.判例名 }, a, {
-    法条统计: window._lastResult.验证?.法条统计,
-    法条对照: window._lastResult.法条对照,
-    溯源: window._lastResult.溯源
+  const r = window._lastResult;
+  const body = Object.assign({ 判例名: r.判例名 }, r.分析, {
+    法条统计: r.验证?.法条统计,
+    法条对照: r.法条对照,
+    溯源: r.溯源,
+    // 下载件是拿给别人看的（律师、HR、对方），只带分析文字的话，
+    // 看的人无从知道这份东西核对过什么、没核对什么。
+    核验读数: r.可信度?.核验,
+    覆盖度: r.可信度?.覆盖度,
+    等级: r.可信度?.等级,
+    待核实: (r.风险列表 || []).filter(x => x.等级 !== 'note').map(x => x.内容),
+    工具边界: (r.风险列表 || []).filter(x => x.等级 === 'note').map(x => x.内容),
   });
   fetch("/download", {
     method: "POST",
@@ -1003,7 +1047,7 @@ function 下载报告() {
     const url = URL.createObjectURL(blob);
     const el = document.createElement("a");
     el.href = url;
-    el.download = (window._lastResult.判例名 || "report") + "_分析报告.txt";
+    el.download = (r.判例名 || "report") + "_分析报告.txt";
     el.click();
     URL.revokeObjectURL(url);
   });
@@ -1030,27 +1074,30 @@ async function 切换历史() {
     list.classList.add("active");
     arrow.textContent = "▼";
   } catch (err) {
-    document.getElementById("historyItems").innerHTML = "<div style='color:#e05d5d;font-size:13px;padding:12px;'>加载失败</div>";
+    渲染历史提示("加载失败", "var(--red)");
     list.classList.add("active");
   }
 }
 
+function 渲染历史提示(文字, 颜色) {
+  const 格 = 清空节点("historyItems");
+  格.appendChild(元素("div", "", 文字))
+    .setAttribute("style", `color:${颜色};font-size:13px;padding:12px;`);
+}
+
 function 渲染历史列表(items) {
-  const container = document.getElementById("historyItems");
-  if (items.length === 0) {
-    container.innerHTML = "<div style='color:#6b7280;font-size:13px;padding:12px;'>暂无匹配记录</div>";
-    return;
-  }
-  if (items.length === 0) {
-    container.innerHTML = "<div style='color:var(--text-dim);font-size:13px;padding:12px 0;'>暂无历史记录，分析结果将在此显示</div>";
-    return;
-  }
-  container.innerHTML = items.map(item =>
-    `<div class="history-item" onclick="加载历史详情('${item.文件名}')">
-      <div class="h-name">${item.判例名}</div>
-      <div class="h-meta">${item.日期}</div>
-    </div>`
-  ).join("");
+  const container = 清空节点("historyItems");
+  if (!items.length) { 渲染历史提示("暂无匹配记录", "var(--text-dim)"); return; }
+  items.forEach(item => {
+    const 条 = 元素("div", "history-item");
+    // 文件名走 dataset 再回读，不拼进 onclick 字符串 ——
+    // 拼进去等于给"文件名"开一条执行 JS 的路，而文件名是从上传的文档名来的。
+    条.dataset.文件名 = item.文件名;
+    条.appendChild(元素("div", "h-name", item.判例名));
+    条.appendChild(元素("div", "h-meta", `${item.日期}${item.模式 ? ' · ' + item.模式 : ''}`));
+    条.addEventListener('click', () => 加载历史详情(条.dataset.文件名));
+    container.appendChild(条);
+  });
 }
 
 // ---- 加载历史详情 ----
