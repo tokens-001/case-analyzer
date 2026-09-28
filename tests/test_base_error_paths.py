@@ -95,7 +95,7 @@ def test_总结的字数下限仍是五十字():
                                      count_law_citations)["通过"] is False   # 没引用法条
     短总结 = 正常[:30]
     验证 = validate_analysis_quality(正常, 正常, 正常, 正常, 短总结, count_law_citations)
-    assert any("总结字数过少" in q for q in 验证["问题"]), 验证["问题"]
+    assert any("总结：字数过少" in q for q in 验证["问题"]), 验证["问题"]
 
 
 if __name__ == "__main__":

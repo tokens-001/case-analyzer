@@ -9,6 +9,7 @@ from datetime import date, datetime
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, session
+from urllib.parse import quote
 
 # 加载 .env 文件（本地开发用；生产环境直接用系统环境变量）
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
@@ -44,6 +45,7 @@ from skills.legal.verify_clauses import verify_clause_anchors
 from skills.legal import contract_skills
 from skills.legal.contract_types import 判定类型
 import parse_doc
+import report_render
 from skills.legal.trace_citations import 执行 as trace_citations
 from skills.legal.score_analysis import (
     validate_analysis_quality,
@@ -595,8 +597,12 @@ def 分析路由():
                          if 命中 else "一类特征词都没命中") +
                         "），改按通用清单查『缺了哪一条』—— 这类结论的针对性比专用清单低")
     # 前 4 位对应 全部分析[:4]，第 5 位对应被单独检查的 总结（判决书模式下它是"结构化摘要"）
+    # 🔴 **这里给的是"报出来给人看的名"**（见 `validate_analysis_quality` 的 docstring：
+    #    它存在的理由就是"免得人照着名字去核对时对错段落"）⇒ 合同那一档必须过一遍 `叫法()`，
+    #    不能直接把内部键名交出去。原来交的是键名，于是告警写成
+    #    「歧义表述字数过少，可能API异常」——**术语漏进了给外人看的下载件**（2026-09-28 测试抓到）。
     段落名 = {"case": ["法律关系", "事实与证据", "对抗路径", "风险推演", "总结"],
-              "contract": ["风险清单", "缺失条款", "失衡条款", "歧义表述", "总结"],
+              "contract": [叫法("风险清单"), 叫法("缺失条款"), 叫法("失衡条款"), 叫法("歧义表述"), "总结"],
               }.get(分析模式, ["核心争议", "推理链路", "未回答问题", "法条适用精析", "总结（结构化摘要）"])
     验证 = validate_analysis_quality(*全部分析[:4], 总结, count_law_citations, 段落名=段落名)
     # ⚠️ 上面那只检查只看 5 个槽位，而一次分析最多有 6 路输出（合同的谈判顺序是第 6 路、
@@ -801,90 +807,24 @@ def 下载路由():
     if not isinstance(data, dict):
         # 不给个默认的 {}：那等于"传错了也给你出一份空报告"，用户拿到手还以为下载成功了
         return jsonify({"error": "请求体不是一份 JSON 对象"}), 400
-    头 = f"""法律分析报告
-{'='*50}
-名称：{data.get('判例名', '')}
-日期：{date.today()}
-"""
-    # 🔴 **立场必须在第一屏**（2026-09-28）：报告正文里「我方」会出现几十次，
-    # 而收件人如果不知道「我方」是谁，**猜反了整份报告的意思就反过来**。
-    # 它放在正文之外的抬头，不进下面那张「跳过表」的正文渲染。
-    立场 = str(data.get('立场') or '').strip()
-    if 立场:
-        说明 = ('（不预设你是哪一方 —— 只报无论谁用都危险的条款）' if 立场 == '中立'
-                else f'（本报告站在【{立场}】的角度）')
-        头 += '立场：' + 立场 + 说明 + '\n'
-    # 读数排在正文之前：拿给别人看的时候，第一屏就该说清这份东西凭什么可信、
-    # 以及哪些地方工具没核过。
-    核 = data.get('核验读数') or {}
-    if 核 or data.get('等级'):
-        头 += f"""
-这份报告核对到什么程度
-{'─'*40}
-可信度等级：{data.get('等级') or '未评'}"""
-        if 核:
-            头 += (f"\n依据共 {核.get('引用总数', '?')} 处："
-                   f"逐条核到原文 {核.get('核到', 0)} 处"
-                   f"、对不上 {核.get('对不上', 0)} 处"
-                   f"、没法核 {核.get('没法核', 0)} 处"
-                   f"（其中 {核.get('库外', 0)} 处是本工具没收录的法律）")
-        if data.get('覆盖度') is not None:
-            头 += f"\n核对覆盖：{round(data['覆盖度'] * 100)}%"
-    for 标题, 键 in (("要你人去核实的", '待核实'), ("本工具的覆盖边界（不代表结论有误）", '工具边界')):
-        列 = data.get(键) or []
-        if 列:
-            头 += f"\n\n{标题}\n{'─'*40}\n" + "\n".join(f"· {x}" for x in 列)
-
-    跳过 = {'判例名', '法条统计', '法条对照', '溯源', '核验读数', '覆盖度', '等级', '立场',
-            '待核实', '工具边界'}
-    正文 = ""
-    for key, val in data.items():
-        if key in 跳过 or not val or isinstance(val, (dict, list)):
-            continue
-        正文 += f"""
-
-{叫法(key)}
-{'─'*40}
-{val}
-"""
-    附录 = ""
-    if data.get('法条统计'):
-        附录 += f"\n\n法条统计\n{'─'*40}\n{data['法条统计']}\n"
-    for 条目 in (data.get('法条对照') or []):
-        if not isinstance(条目, dict):
-            continue
-        附 = []
-        if 条目.get('施行日期'):
-            附.append(f"施行: {条目['施行日期']}")
-        if 条目.get('取代'):
-            附.append(条目['取代'])
-        附录 += (f"\n【{条目.get('法名', '')}】{条目.get('引用', '')}"
-                 f"（{条目.get('状态') or '状态未知'}）"
-                 + (f" {' · '.join(附)}" if 附 else "")
-                 + f"\n{条目.get('条文', '')}\n")
-    溯源块 = ""
-    溯源数据 = data.get('溯源') if isinstance(data.get('溯源'), dict) else {}
-    for item in (溯源数据.get('items') or []):
-        mark = "" if item.get('有效') else "⚠️ 原文里没有这一段："
-        溯源块 += f"\n{mark}原文第{item.get('段号', '')}段：\n{item.get('内容', '')}\n"
-    if 附录 or 溯源块:
-        附录 = f"\n\n核到的法条原文\n{'─'*40}\n{附录}{溯源块}"
-
-    报告 = 头 + 正文 + 附录 + f"""
-
-{'='*50}
-本报告由「判例助手」自动生成 | {date.today()}
-它做的事情只有一件：把报告里引用的每一条法律、每一段合同原文拿回去逐字核对。
-它没有判断法律结论对不对，也看不到你手上的完整材料。
-真要签字或真要打官司之前，请带原件找执业律师核实。
-"""
+    # 🔴 **整份报告交给 `report_render` 合成**（2026-09-28）：
+    # 原来这里是"七个维度原样拼接"，跑出来 32,338 字 / 554 行 ——
+    # 24/24 条被提到的条款都在 2~4 个维度里各说了一遍，而结论被压在最后。
+    # 合并的规则、去重的代价、哪一块没参与去重，都写在那个模块的头部。
+    报告 = report_render.渲染(data)
     from flask import Response
+    # Markdown 而不是纯文本：层级、列表、加粗在微信/钉钉/编辑器里都认，
+    # 而纯文本 500 行是翻不动的。
+    名 = (data.get("判例名") or "报告").strip().replace("/", "_").replace("\"", "_")[:40]
     return Response(
         报告,
-        mimetype="text/plain; charset=utf-8",
+        mimetype="text/markdown; charset=utf-8",
         headers={
-            "Content-Disposition": "attachment; filename=report.txt",
-            "Content-Type": "text/plain; charset=utf-8"
+            # RFC 5987：中文文件名要写成 filename*，否则浏览器拿到一串乱码
+            "Content-Disposition":
+                f"attachment; filename=report.md; filename*=UTF-8''{quote(名 + '_分析报告.md')}",
+            # ⚠️ 这里**别再写一遍 Content-Type**： 已经设过了，
+            #    再设一次会拼成 `text/markdown; charset=utf-8; charset=utf-8`（实测过）。
         }
     )
 
