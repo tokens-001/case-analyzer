@@ -811,7 +811,15 @@ def 下载路由():
     # 原来这里是"七个维度原样拼接"，跑出来 32,338 字 / 554 行 ——
     # 24/24 条被提到的条款都在 2~4 个维度里各说了一遍，而结论被压在最后。
     # 合并的规则、去重的代价、哪一块没参与去重，都写在那个模块的头部。
-    报告 = report_render.渲染(data)
+    # 两份（2026-09-28 用户拍板）：给人读的 / 给人查证的。
+    # 附录实测占整份 42%，跟"读报告"是两种用法 —— 合成一个文件时读的人翻不到头。
+    部分 = str(data.get("部分") or "报告").strip()
+    if 部分 == "附录":
+        报告 = report_render.渲染附录(data)
+        后缀 = "_法条原文.md"
+    else:
+        报告 = report_render.渲染(data)
+        后缀 = "_分析报告.md"
     from flask import Response
     # Markdown 而不是纯文本：层级、列表、加粗在微信/钉钉/编辑器里都认，
     # 而纯文本 500 行是翻不动的。
@@ -822,7 +830,7 @@ def 下载路由():
         headers={
             # RFC 5987：中文文件名要写成 filename*，否则浏览器拿到一串乱码
             "Content-Disposition":
-                f"attachment; filename=report.md; filename*=UTF-8''{quote(名 + '_分析报告.md')}",
+                f"attachment; filename=report.md; filename*=UTF-8''{quote(名 + 后缀)}",
             # ⚠️ 这里**别再写一遍 Content-Type**： 已经设过了，
             #    再设一次会拼成 `text/markdown; charset=utf-8; charset=utf-8`（实测过）。
         }

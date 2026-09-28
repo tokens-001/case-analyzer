@@ -513,9 +513,12 @@
     <!-- 验证 -->
     <div class="validation pass" id="validation"></div>
 
-    <!-- 下载按钮 -->
-    <div style="text-align:center; margin-top:8px;">
-      <button class="btn btn-primary" onclick="下载报告()" id="btnDownload" style="display:none;">📥 下载分析报告</button>
+    <!-- 下载按钮：**两份**（2026-09-28）—— 报告是给人读的，法条原文是给人查证的。
+         附录实测占整份 42%，合成一个文件时，读的人在四成条文里翻不到头。 -->
+    <div style="text-align:center; margin-top:8px;" id="downloadRow">
+      <button class="btn btn-primary" onclick="下载报告('')" id="btnDownload" style="display:none;">📥 下载分析报告</button>
+      <button class="btn btn-secondary" onclick="下载报告('附录')" id="btnAppendix"
+              style="display:none; margin-left:8px;">📚 法条原文（附录）</button>
     </div>
 
     <!-- 反馈区放在 #results **里面**：它问的是"这一次分析"怎么样，
@@ -1138,6 +1141,10 @@ function 渲染结果(data) {
 
   // 显示下载按钮和反馈区（重置表单状态）
   document.getElementById("btnDownload").style.display = "inline-block";
+  // ⚠️ 附录那个按钮**只在真有法条可出时才显示**：没引到法条时点它只会下到一句
+  //    "（这一份没有引到可核对的法条。）" —— 那是给用户白点一下。
+  document.getElementById("btnAppendix").style.display =
+    ((data.法条对照 && data.法条对照.length) || data.法条统计) ? "inline-block" : "none";
   document.getElementById("feedback-section").style.display = "block";
   document.getElementById("feedback-form").style.display = "block";
   document.getElementById("feedback-done").style.display = "none";
@@ -1196,12 +1203,14 @@ async function 提交反馈() {
 }
 
 // ---- 下载报告 ----
-function 下载报告() {
+function 下载报告(部分) {
   if (!window._lastResult) return;
   const r = window._lastResult;
   const body = Object.assign({ 判例名: r.判例名 }, r.分析, {
     // 立场要跟着下载件走 —— 收件人读「对我方不利」得知道「我方」是谁
     立场: r.立场,
+    // 两份：不传 = 给人读的报告；传「附录」= 法条原文那一份
+    部分: 部分,
     法条统计: r.验证?.法条统计,
     法条对照: r.法条对照,
     溯源: r.溯源,
