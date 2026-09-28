@@ -517,6 +517,8 @@
          附录实测占整份 42%，合成一个文件时，读的人在四成条文里翻不到头。 -->
     <div style="text-align:center; margin-top:8px;" id="downloadRow">
       <button class="btn btn-primary" onclick="下载报告('')" id="btnDownload" style="display:none;">📥 下载分析报告</button>
+      <button class="btn btn-secondary" onclick="下载报告('对照表')" id="btnRevise"
+              style="display:none; margin-left:8px;">📋 改动对照表</button>
       <button class="btn btn-secondary" onclick="下载报告('附录')" id="btnAppendix"
               style="display:none; margin-left:8px;">📚 法条原文（附录）</button>
     </div>
@@ -1145,6 +1147,9 @@ function 渲染结果(data) {
   //    "（这一份没有引到可核对的法条。）" —— 那是给用户白点一下。
   document.getElementById("btnAppendix").style.display =
     ((data.法条对照 && data.法条对照.length) || data.法条统计) ? "inline-block" : "none";
+  // 对照表只对**合同模式**有意义（案情/判决书没有"改法建议"这一维）
+  document.getElementById("btnRevise").style.display =
+    (data.分析 && data.分析.改法建议) ? "inline-block" : "none";
   document.getElementById("feedback-section").style.display = "block";
   document.getElementById("feedback-form").style.display = "block";
   document.getElementById("feedback-done").style.display = "none";
@@ -1209,8 +1214,12 @@ function 下载报告(部分) {
   const body = Object.assign({ 判例名: r.判例名 }, r.分析, {
     // 立场要跟着下载件走 —— 收件人读「对我方不利」得知道「我方」是谁
     立场: r.立场,
-    // 两份：不传 = 给人读的报告；传「附录」= 法条原文那一份
+    // 三份：不传 = 给人读的报告；「对照表」= 照着改合同；「附录」= 法条原文
     部分: 部分,
+    // ⚠️ 对照表要拿**原文**逐条对照。首选盘上的送检文本（服务端按报告文件名找），
+    //    找不到时用这里带过去的合同文本兜底。
+    报告文件: r.报告文件,
+    原文: (document.getElementById("caseText") || {}).value || '',
     法条统计: r.验证?.法条统计,
     法条对照: r.法条对照,
     溯源: r.溯源,

@@ -46,6 +46,7 @@ from skills.legal import contract_skills
 from skills.legal.contract_types import 判定类型
 import parse_doc
 import report_render
+import contract_revise
 from skills.legal.trace_citations import 执行 as trace_citations
 from skills.legal.score_analysis import (
     validate_analysis_quality,
@@ -188,6 +189,29 @@ def _核验快照(可信度, 验证, 风险列表, 法条对照, 条款校验):
         "条款校验": ({k: v for k, v in 条款校验.items() if not isinstance(v, list)}
                     if 条款校验 else None),
     }
+
+
+def _读送检文本(报告文件名):
+    """按报告文件名推它的同源送检文本（`<同名>.送检文本.txt`），读回来。
+
+    ⚠️ **必须挡路径穿越**：`报告文件名` 从前端来。只认 basename，
+    并且拼出来的路径必须真的落在用户数据目录里。
+    """
+    if not isinstance(报告文件名, str) or not 报告文件名.strip():
+        return ""
+    import os.path as _p
+    文件夹 = 用户数据目录()
+    名 = _p.basename(报告文件名.strip())
+    if not 名.endswith(".json"):
+        return ""
+    路径 = _p.join(文件夹, 名[:-5] + ".送检文本.txt")
+    if not _p.realpath(路径).startswith(_p.realpath(文件夹) + _p.sep):
+        return ""
+    try:
+        with open(路径, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
 
 
 def _写判决JSON(判例名, 数据):
@@ -811,12 +835,25 @@ def 下载路由():
     # 原来这里是"七个维度原样拼接"，跑出来 32,338 字 / 554 行 ——
     # 24/24 条被提到的条款都在 2~4 个维度里各说了一遍，而结论被压在最后。
     # 合并的规则、去重的代价、哪一块没参与去重，都写在那个模块的头部。
-    # 两份（2026-09-28 用户拍板）：给人读的 / 给人查证的。
-    # 附录实测占整份 42%，跟"读报告"是两种用法 —— 合成一个文件时读的人翻不到头。
+    # 三份（2026-09-28 用户拍板）：给人读的 / 给人照着改合同的 / 给人查证的。
     部分 = str(data.get("部分") or "报告").strip()
     if 部分 == "附录":
         报告 = report_render.渲染附录(data)
         后缀 = "_法条原文.md"
+    elif 部分 == "对照表":
+        # ⚠️ **它需要原文**（要逐条对照"这一款原来怎么写"）。
+        # 优先取**盘上的送检文本**（分析当初真正看到的那一份，最权威）；
+        # 取不到就退回**前端手里的那份合同文本** —— 两者正文行是一致的
+        # （送检文本只是在正文行之间**插了锚点行**）。
+        # 🔴 **为什么要有兜底**：盘上那份是按 **session 的用户目录**存的 ⇒
+        #    cookie 一清、或密钥换了（见 `_会话密钥` 的注释），旧报告就认不回来了。
+        #    那时另外两份（报告/附录）还能出，这一份却 400 —— 那是白挡。
+        送检 = _读送检文本(data.get("报告文件")) or str(data.get("原文") or "")
+        if not 送检.strip():
+            return jsonify({"error": "拿不到这份合同的原文（盘上的送检文本没了、"
+                                     "前端也没带过来）。改动对照表要拿原文逐条对照，缺了它做不出来。"}), 400
+        报告 = contract_revise.渲染对照表(送检, data)
+        后缀 = "_改动对照表.md"
     else:
         报告 = report_render.渲染(data)
         后缀 = "_分析报告.md"
@@ -826,7 +863,9 @@ def 下载路由():
     名 = (data.get("判例名") or "报告").strip().replace("/", "_").replace("\"", "_")[:40]
     return Response(
         报告,
-        mimetype="text/markdown; charset=utf-8",
+        # ⚠️ 只给类型 —— 写成 "text/markdown; charset=utf-8" 会被 Werkzeug 再加一遍，
+            #    变成 `text/markdown; charset=utf-8; charset=utf-8`（实测过两次）
+            mimetype="text/markdown",
         headers={
             # RFC 5987：中文文件名要写成 filename*，否则浏览器拿到一串乱码
             "Content-Disposition":
