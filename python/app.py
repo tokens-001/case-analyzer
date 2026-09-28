@@ -869,9 +869,17 @@ def 下载路由():
             #    变成 `text/markdown; charset=utf-8; charset=utf-8`（实测过两次）
             mimetype="text/plain",
         headers={
-            # RFC 5987：中文文件名要写成 filename*，否则浏览器拿到一串乱码
+            # RFC 5987：中文文件名要写成 filename*，否则浏览器拿到一串乱码。
+            # ⚠️ 这条**只对「直接打开这个 URL」有用** —— 页面上的下载按钮走的是
+            #    blob URL，那一步**取不到 Content-Disposition**，所以下面另发一个头。
             "Content-Disposition":
                 f"attachment; filename=report.txt; filename*=UTF-8''{quote(名 + 后缀)}",
+            # 🔴 **文件名只在这里定**（2026-09-28）。前端原来自己拼
+            #    `判例名 + "_分析报告.txt"`，我加了三份却没跟着改 ⇒
+            #    **报告 / 改动对照表 / 法条原文 三份下载下来是同一个名字**（用户实测发现）。
+            #    发成一个头让前端读，避免「服务端一份、前端一份」两份名字迟早漂。
+            #    ⚠️ HTTP 头只能放 ASCII ⇒ 百分号编码，前端 `decodeURIComponent` 解回来。
+            "X-Filename": quote(名 + 后缀),
             # ⚠️ 这里**别再写一遍 Content-Type**： 已经设过了，
             #    再设一次会拼成 `text/markdown; charset=utf-8; charset=utf-8`（实测过）。
         }

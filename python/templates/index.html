@@ -1235,11 +1235,19 @@ function 下载报告(部分) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
-  }).then(res => res.blob()).then(blob => {
+  }).then(async res => {
+    // 🔴 **文件名由服务端给**（三份各不相同：报告 / 改动对照表 / 法条原文）。
+    //    前端原来自己拼 `判例名 + "_分析报告.txt"` —— 我加了三份却没跟着改
+    //    ⇒ **三份下载下来是同一个名字**（用户实测发现的）。
+    //    blob URL **取不到 Content-Disposition**，所以服务端另发一个 X-Filename。
+    const 服务端名 = res.headers.get("X-Filename");
+    return { blob: await res.blob(), 名: 服务端名 ? decodeURIComponent(服务端名) : "" };
+  }).then(({ blob, 名 }) => {
     const url = URL.createObjectURL(blob);
     const el = document.createElement("a");
     el.href = url;
-    el.download = (r.判例名 || "report") + "_分析报告.txt";
+    // 兜底：服务端没给名字时才自己拼（名字里的斜杠要换掉，不然下载会失败）
+    el.download = 名 || ((r.判例名 || "报告").replace(/[\/\\]/g, "_") + "_分析报告.txt");
     el.click();
     URL.revokeObjectURL(url);
   });
