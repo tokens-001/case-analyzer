@@ -420,13 +420,14 @@
          真机上它对一份劳动合同站了乙方，而报告里「我方」出现 52 次、一次都没交代是谁
          ⇒ 收件人得自己猜，猜反了整份报告的意思就反过来。 -->
     <div class="submode-switch" id="side-switch" style="display:none">
-      <span style="font-size:12px;color:var(--text-dim);align-self:center;margin-right:4px;">你以为谁审这份合同？</span>
+      <span style="font-size:12px;color:var(--text-dim);align-self:center;margin-right:4px;">这份合同，你是哪一方？</span>
       <button class="submode-btn" id="side-jia" onclick="切换视角('甲方')">甲方</button>
       <button class="submode-btn" id="side-yi" onclick="切换视角('乙方')">乙方</button>
       <button class="submode-btn active" id="side-zhong" onclick="切换视角('中立')">中立</button>
     </div>
     <div class="field-hint" id="sideHint">
-      选「中立」= 不站边，只报「无论谁用都危险」的条款（模版、或还没谈的时候用这个）。
+      选甲方或乙方：只挑对<strong>你这一方</strong>不利的。
+      选<strong>中立</strong>：不站边，只挑「无论谁用都危险」的条款 —— 模版、或还没谈拢的时候用这个。
     </div>
 
     <div class="input-row">
