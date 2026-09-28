@@ -72,8 +72,8 @@ def test_定位不唯一就退回摘录_并明说():
 
 def test_对照表要标出没定位的那几处():
     文 = 渲染对照表(原文, 数据)
-    assert "**原文**" in 文 and "**改成**" in 文
-    assert "**依据**" in 文, "依据没带上"
+    assert "原  文" in 文 and "改 成" in 文
+    assert "依  据" in 文, "依据没带上"
     assert "建议新增" in 文, "新增条款那一节没了"
 
 

@@ -839,7 +839,7 @@ def 下载路由():
     部分 = str(data.get("部分") or "报告").strip()
     if 部分 == "附录":
         报告 = report_render.渲染附录(data)
-        后缀 = "_法条原文.md"
+        后缀 = "_法条原文.txt"
     elif 部分 == "对照表":
         # ⚠️ **它需要原文**（要逐条对照"这一款原来怎么写"）。
         # 优先取**盘上的送检文本**（分析当初真正看到的那一份，最权威）；
@@ -853,23 +853,25 @@ def 下载路由():
             return jsonify({"error": "拿不到这份合同的原文（盘上的送检文本没了、"
                                      "前端也没带过来）。改动对照表要拿原文逐条对照，缺了它做不出来。"}), 400
         报告 = contract_revise.渲染对照表(送检, data)
-        后缀 = "_改动对照表.md"
+        后缀 = "_改动对照表.txt"
     else:
         报告 = report_render.渲染(data)
-        后缀 = "_分析报告.md"
+        后缀 = "_分析报告.txt"
     from flask import Response
-    # Markdown 而不是纯文本：层级、列表、加粗在微信/钉钉/编辑器里都认，
-    # 而纯文本 500 行是翻不动的。
+    # 🔴 **纯文本**（2026-09-28 用户实测后改回来）：我一度输出 Markdown，理由是
+    # "微信/钉钉/编辑器都认得" —— **那话是错的**：那些地方认得的是聊天里发的；
+    # 而下载成文件、在手机里打开，`#` `**` 全是字面的噪音（用户原话「一对符号文字
+    # 对一起，我都看不下去」）。版面靠分隔线+缩进+空行做，见 `report_render` 的版式一节。
     名 = (data.get("判例名") or "报告").strip().replace("/", "_").replace("\"", "_")[:40]
     return Response(
         报告,
         # ⚠️ 只给类型 —— 写成 "text/markdown; charset=utf-8" 会被 Werkzeug 再加一遍，
             #    变成 `text/markdown; charset=utf-8; charset=utf-8`（实测过两次）
-            mimetype="text/markdown",
+            mimetype="text/plain",
         headers={
             # RFC 5987：中文文件名要写成 filename*，否则浏览器拿到一串乱码
             "Content-Disposition":
-                f"attachment; filename=report.md; filename*=UTF-8''{quote(名 + 后缀)}",
+                f"attachment; filename=report.txt; filename*=UTF-8''{quote(名 + 后缀)}",
             # ⚠️ 这里**别再写一遍 Content-Type**： 已经设过了，
             #    再设一次会拼成 `text/markdown; charset=utf-8; charset=utf-8`（实测过）。
         }
