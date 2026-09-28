@@ -967,11 +967,23 @@ function 渲染结果(data) {
   //    显隐在这里统一决定：可信度和结论有一样能显示，就显示整块。
   const 结论 = (a && a.总结) || "";
   const 结论节 = 清空节点("quick-summary");
+  // 🔴 **立场要显示出来**（2026-09-28）：报告正文里满是「甲方/乙方」的判断，
+  // 看的人必须一眼知道这份报告站在谁那边。存盘和下载件都带了它，**页面上原来没有** ——
+  // 等于看的人只能靠自己记得刚才点了哪个按钮（而报告是要转给别人的）。
+  if (data.立场) {
+    结论节.appendChild(元素("div", "q-label",
+      data.立场 === "中立"
+        ? "本报告立场：中立 —— 不预设你是哪一方，只报无论谁用都危险的条款"
+        : `本报告立场：站在【${data.立场}】角度`));
+  }
   if (结论) {
     结论节.appendChild(元素("div", "q-label", 叫法("总结")));
     结论节.appendChild(元素("div", "q-text", 结论));
   }
-  document.getElementById("result-hero").style.display = (data.可信度 || 结论) ? "" : "none";
+  // ⚠️ 显隐条件里**必须带上 `data.立场`** —— 只改了上面那段而不改这一行，
+  //    就等于把它加进了一个写死 `display:none` 的容器（本文件上面那段注释记着同一个坑）。
+  document.getElementById("result-hero").style.display =
+    (data.可信度 || 结论 || data.立场) ? "" : "none";
 
   // 可信度仪表盘（只显示等级+明细，不显示伪精确数字分）
   if (data.可信度) {
