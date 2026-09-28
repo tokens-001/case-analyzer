@@ -349,6 +349,61 @@ def test_某一维返回失败产物时必须出声():
     assert any("谈判顺序" in p for p in 数["验证"]["问题"]), 数["验证"]["问题"]
 
 
+# ── 送检文本要跟着报告落盘（2026-09-28）────────────────────────────
+#
+# 🔴 来历：报告里到处是**位置标注**（【第一条第4款】），而**只存报告不存原文** ⇒
+#      事后想核"第一条到底几款"**没有比对物**，只能信报告自己 ——
+#      真机上我就卡在这儿，判不了那条指控（`第一条第4款` 对不上）到底谁错。
+# ⚠️ **另一个已知缺口（没做）**：
+#      见 `_核验快照`：它只存 danger→要核实 / note→边界说明，**warning 档整个不存**，
+#      而 详情路由 是从快照重建 风险列表 的 ⇒ warning 那几条静默没了（实测 7 条→4 条）。
+#      ⚠️ **发给别人的下载件不受影响**（它取的是实时响应，那条在「要核实」栏里）。
+
+def _落盘文件(名):
+    """按文件名在 `DATA_DIR` 下找（`<uid>/<名>`）。
+
+    ⚠️ **不能调 `app_mod.用户数据目录()`** —— 它读 `session`，只有活跃请求上下文里才活，
+    在测试里调会 `RuntimeError`。而测试关心的只是"这东西有没有落盘"。
+    """
+    import pathlib
+    hits = list(pathlib.Path(os.environ["DATA_DIR"]).glob(f"*/{名}"))
+    assert hits, f"没落盘: {名}（在 {os.environ['DATA_DIR']} 下找过）"
+    return hits[0]
+
+
+def _存下来的报告(响应):
+    import json as _json
+    return _json.loads(_落盘文件(响应.get_json()["报告文件"]).read_text(encoding="utf-8"))
+
+
+def test_送检文本要和报告一起落盘():
+    """复核靠它 —— 没有它，"报告里这个位置标注对不对"这件事**判不了**。
+
+    ⚠️ 存的**不是裸输入，是加过 `【第N条】` 锚点的那一份**（见 `_存送检文本`）：
+    复核位置标注要的就是带锚点那份。所以断言是"**包含**原文字面"，不是相等。
+    """
+    _装桩()
+    回 = _客户端().post("/analyze", json={"name": "运维合同-落盘", "text": 合同正文,
+                                          "mode": "contract"})
+    assert 回.status_code == 200, 回.get_json()
+    存 = _落盘文件(回.get_json()["报告文件"][:-5] + ".送检文本.txt").read_text(encoding="utf-8")
+    for 行 in 合同正文.splitlines():
+        assert 行.strip() in 存, f"送检文本里少了原文这行：{行!r}"
+
+
+def test_原文不许塞进报告JSON():
+    """🔴 **反方向**：报告 JSON 会被 `/download` 按"跳过表之外的全部键"渲染成
+    **给别人看的**文件 ⇒ 把原文塞进去 = 把整份合同导出去。
+    所以原文必须是**旁边一个独立文件**，判据就是这条。"""
+    _装桩()
+    回 = _客户端().post("/analyze", json={"name": "运维合同-无日期", "text": 合同正文,
+                                          "mode": "contract"})
+    d = _存下来的报告(回)
+    for v in d.values():
+        assert not (isinstance(v, str) and 合同正文 in v), \
+            "原文被塞进了报告 JSON —— 下载件会把它整份导给收件人"
+
+
 if __name__ == "__main__":
     测试们 = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for 名, t in 测试们:
